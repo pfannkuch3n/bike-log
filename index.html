@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Bike Log" />
+  <meta name="theme-color" content="#6b7c3f" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+  <title>Bike Log</title>
+<style>
+/* ── Reset & Base ─────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:          #f2f2f7;
+  --bg-card:     #ffffff;
+  --bg-input:    #f2f2f7;
+  --sep:         #d1d1d6;
+  --accent:      #5a6b1f;
+  --accent-soft: #eef1e6;
+  --text:        #1c1c1e;
+  --text-2:      #6c6c70;
+  --danger:      #c0392b;
+  --danger-soft: #fdecea;
+  --radius:      14px;
+  --radius-sm:   8px;
+  --safe-top:    env(safe-area-inset-top, 0px);
+  --safe-bot:    env(safe-area-inset-bottom, 0px);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:          #1c1c1e;
+    --bg-card:     #2c2c2e;
+    --bg-input:    #3a3a3c;
+    --sep:         #38383a;
+    --accent:      #8fa84a;
+    --accent-soft: #2a2f1a;
+    --text:        #f2f2f7;
+    --text-2:      #8e8e93;
+    --danger:      #e05c4b;
+    --danger-soft: #2c1a18;
+  }
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Layout ───────────────────────────────────────────────────── */
+#app {
+  max-width: 600px;
+  margin: 0 auto;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.view {
+  display: none;
+  flex-direction: column;
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: calc(var(--safe-bot) + 24px);
+}
+.view.active { display: flex; }
+
+/* ── Topbar ───────────────────────────────────────────────────── */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: calc(var(--safe-top) + 12px) 12px 10px;
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 10;
+  flex-shrink: 0;
+}
+.topbar h1 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  flex: 1;
+  padding-left: 4px;
+}
+.icon-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--accent);
+  font-size: 1.35rem;
+  border-radius: var(--radius-sm);
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+.icon-btn:active { background: var(--accent-soft); }
+
+/* ── Content wrapper ──────────────────────────────────────────── */
+.content { padding: 0 16px; flex: 1; }
+
+/* ── Banner ───────────────────────────────────────────────────── */
+.banner {
+  margin: 0 16px 12px;
+  padding: 11px 14px;
+  background: var(--accent-soft);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.banner-text { flex: 1; }
+.banner-action {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 6px 11px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  min-height: 34px;
+  font-family: inherit;
+}
+.banner-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-2);
+  font-size: 1rem;
+  min-width: 32px;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── Stats card ───────────────────────────────────────────────── */
+.stats-card {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  padding: 22px 20px 18px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+.stats-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  margin-bottom: 2px;
+}
+.stats-value {
+  font-size: 3.2rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--accent);
+  letter-spacing: -0.03em;
+}
+.stats-unit {
+  font-size: 1.4rem;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.stats-sub {
+  font-size: 0.82rem;
+  color: var(--text-2);
+  margin-top: 6px;
+}
+
+/* ── Fahrt list ───────────────────────────────────────────────── */
+.section-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  margin-bottom: 8px;
+  padding-left: 2px;
+}
+
+.fahrt-item {
+  display: flex;
+  align-items: center;
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+  padding: 13px 14px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  gap: 10px;
+  min-height: 56px;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.fahrt-item:active { opacity: 0.65; }
+.fahrt-datum { font-weight: 600; font-size: 0.95rem; flex: 1; }
+.fahrt-notiz-badge {
+  font-size: 0.7rem;
+  color: var(--text-2);
+  background: var(--bg-input);
+  padding: 2px 6px;
+  border-radius: 100px;
+}
+.fahrt-km {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--accent);
+  white-space: nowrap;
+}
+.fahrt-chevron { color: var(--sep); font-size: 1rem; }
+
+/* ── FAB ──────────────────────────────────────────────────────── */
+.fab {
+  position: sticky;
+  bottom: calc(var(--safe-bot) + 20px);
+  align-self: flex-end;
+  margin-right: 20px;
+  margin-top: 16px;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  font-size: 2rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 3px 14px rgba(0,0,0,0.22);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.fab:active { transform: scale(0.93); }
+
+/* ── Forms ────────────────────────────────────────────────────── */
+.field { margin-bottom: 16px; }
+.field label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-2);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+input[type="text"],
+input[type="number"],
+input[type="date"],
+textarea,
+select {
+  width: 100%;
+  background: var(--bg-card);
+  color: var(--text);
+  border: 1.5px solid var(--sep);
+  border-radius: var(--radius-sm);
+  padding: 12px 13px;
+  font-size: 1rem;
+  font-family: inherit;
+  appearance: none;
+  -webkit-appearance: none;
+  outline: none;
+  transition: border-color 0.15s;
+}
+input:focus, textarea:focus { border-color: var(--accent); }
+textarea { resize: vertical; min-height: 80px; }
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 50px;
+  padding: 12px 20px;
+  border-radius: var(--radius-sm);
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  width: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn + .btn { margin-top: 10px; }
+.btn-primary  { background: var(--accent); color: #fff; }
+.btn-primary:active  { opacity: 0.82; }
+.btn-secondary { background: var(--bg-input); color: var(--text); }
+.btn-secondary:active { opacity: 0.7; }
+.btn-danger   { background: var(--danger); color: #fff; }
+.btn-danger:active   { opacity: 0.82; }
+
+/* ── Photo area ───────────────────────────────────────────────── */
+.photo-area {
+  width: 100%;
+  height: 200px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-card);
+  border: 2px dashed var(--sep);
+  margin-bottom: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  -webkit-tap-highlight-color: transparent;
+}
+.photo-area img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.photo-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-2);
+  font-size: 0.85rem;
+}
+.photo-placeholder-icon { font-size: 2rem; }
+
+/* ── Settings ─────────────────────────────────────────────────── */
+.settings-section { margin-bottom: 28px; }
+.settings-header {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-2);
+  margin-bottom: 8px;
+  padding-left: 4px;
+}
+.settings-group {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--sep);
+  min-height: 52px;
+  width: 100%;
+  font-size: 1rem;
+  font-family: inherit;
+  color: var(--text);
+  background: none;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  text-align: left;
+  cursor: default;
+}
+.settings-row:last-child { border-bottom: none; }
+.settings-row.tappable { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.settings-row.tappable:active { background: var(--bg-input); }
+.settings-row-icon { font-size: 1.15rem; flex-shrink: 0; }
+.settings-row-label { flex: 1; font-weight: 500; }
+.settings-row-sub { font-size: 0.82rem; color: var(--text-2); }
+.settings-row-chevron { color: var(--sep); font-size: 1.1rem; }
+
+/* ── Onboarding ───────────────────────────────────────────────── */
+#view-onboarding .content {
+  padding-top: calc(var(--safe-top) + 32px);
+  padding-bottom: 40px;
+  display: flex;
+  flex-direction: column;
+}
+.onboarding-icon { font-size: 3rem; text-align: center; margin-bottom: 12px; }
+.onboarding-title { font-size: 2rem; font-weight: 800; text-align: center; margin-bottom: 6px; }
+.onboarding-sub {
+  text-align: center;
+  color: var(--text-2);
+  margin-bottom: 22px;
+  line-height: 1.55;
+  font-size: 0.95rem;
+}
+.hint-box {
+  background: var(--accent-soft);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-size: 0.875rem;
+  margin-bottom: 28px;
+  line-height: 1.5;
+}
+.form-section-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  margin-bottom: 14px;
+}
+
+/* ── Empty state ──────────────────────────────────────────────── */
+.empty-state {
+  text-align: center;
+  color: var(--text-2);
+  padding: 44px 8px;
+  line-height: 1.8;
+  font-size: 0.92rem;
+}
+
+/* ── Toast ────────────────────────────────────────────────────── */
+.toast {
+  position: fixed;
+  bottom: calc(var(--safe-bot) + 90px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #333;
+  color: #fff;
+  padding: 11px 18px;
+  border-radius: 100px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  z-index: 200;
+  pointer-events: none;
+  white-space: nowrap;
+  max-width: calc(100vw - 32px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (prefers-color-scheme: dark) { .toast { background: #555; } }
+.toast.error { background: var(--danger); }
+.toast.success { background: var(--accent); }
+
+/* ── Confirm modal ────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.48);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 100;
+}
+.modal {
+  background: var(--bg-card);
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: 24px 20px calc(var(--safe-bot) + 24px);
+  width: 100%;
+  max-width: 600px;
+}
+.modal h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; }
+.modal p { color: var(--text-2); font-size: 0.9rem; margin-bottom: 20px; line-height: 1.5; }
+.modal-actions { display: flex; gap: 10px; }
+.modal-actions .btn { flex: 1; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── Onboarding ──────────────────────────────────────────── -->
+  <div class="view" id="view-onboarding">
+    <div class="content">
+      <div class="onboarding-icon">🚲</div>
+      <h1 class="onboarding-title">Bike Log</h1>
+      <p class="onboarding-sub">Deine Fahrten, lokal auf diesem Gerät.<br>Keine Cloud, kein Account.</p>
+      <div class="hint-box">
+        <strong>So funktioniert die Sicherung:</strong> Tippe regelmäßig auf „Exportieren", um eine JSON-Datei über das iOS-Teilen-Menü zu speichern. Daten verlassen das Gerät nie automatisch.
+      </div>
+      <p class="form-section-title">Dein Bike</p>
+      <form id="onboarding-form">
+        <div class="field">
+          <label for="ob-name">Name</label>
+          <input id="ob-name" type="text" placeholder="z.B. Trek Checkpoint" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="ob-rahmennummer">Rahmennummer</label>
+          <input id="ob-rahmennummer" type="text" placeholder="optional" autocomplete="off" />
+        </div>
+        <button type="submit" class="btn btn-primary">Los geht's →</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Home ────────────────────────────────────────────────── -->
+  <div class="view" id="view-home">
+    <div class="topbar">
+      <h1>Bike Log</h1>
+      <button class="icon-btn" id="btn-goto-bike" aria-label="Bike-Profil">🚲</button>
+      <button class="icon-btn" id="btn-goto-settings" aria-label="Einstellungen">⚙️</button>
+    </div>
+    <div id="backup-banner" class="banner" hidden>
+      <span class="banner-text" id="banner-text"></span>
+      <button class="banner-action" id="banner-export-btn">Exportieren</button>
+      <button class="banner-close" id="banner-close-btn" aria-label="Schließen">✕</button>
+    </div>
+    <div class="content">
+      <div class="stats-card">
+        <div class="stats-label">Gesamt</div>
+        <div class="stats-value"><span id="total-km">0,0</span> <span class="stats-unit">km</span></div>
+        <div class="stats-sub" id="stats-count"></div>
+      </div>
+      <div id="fahrten-list"></div>
+    </div>
+    <button class="fab" id="btn-neue-fahrt" aria-label="Neue Fahrt">+</button>
+  </div>
+
+  <!-- ── Fahrt Formular ───────────────────────────────────────── -->
+  <div class="view" id="view-fahrt">
+    <div class="topbar">
+      <button class="icon-btn" id="btn-fahrt-back" aria-label="Zurück">←</button>
+      <h1 id="fahrt-form-title">Neue Fahrt</h1>
+    </div>
+    <div class="content" style="padding-top:8px">
+      <form id="fahrt-form">
+        <div class="field">
+          <label for="f-datum">Datum</label>
+          <input id="f-datum" type="date" required />
+        </div>
+        <div class="field">
+          <label for="f-km">Kilometer</label>
+          <input id="f-km" type="number" inputmode="decimal" min="0.1" step="0.1" placeholder="0,0" required />
+        </div>
+        <div class="field">
+          <label for="f-notiz">Notiz</label>
+          <textarea id="f-notiz" rows="4" placeholder="optional"></textarea>
+        </div>
+        <input type="hidden" id="f-id" />
+        <button type="submit" class="btn btn-primary">Speichern</button>
+        <button type="button" class="btn btn-danger" id="fahrt-delete-btn" hidden>Fahrt löschen</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Bike-Profil ──────────────────────────────────────────── -->
+  <div class="view" id="view-bike">
+    <div class="topbar">
+      <button class="icon-btn" id="btn-bike-back" aria-label="Zurück">←</button>
+      <h1>Bike-Profil</h1>
+    </div>
+    <div class="content" style="padding-top:8px">
+      <div class="photo-area" id="photo-area" role="button" tabindex="0" aria-label="Foto auswählen">
+        <img id="bike-photo" src="" alt="Bike-Foto" hidden />
+        <div id="photo-placeholder" class="photo-placeholder">
+          <span class="photo-placeholder-icon">📷</span>
+          <span>Foto hinzufügen</span>
+        </div>
+        <input type="file" id="bike-foto-input" accept="image/*" hidden />
+      </div>
+      <form id="bike-form">
+        <div class="field">
+          <label for="b-name">Name</label>
+          <input id="b-name" type="text" placeholder="z.B. Trek Checkpoint" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="b-rahmennummer">Rahmennummer</label>
+          <input id="b-rahmennummer" type="text" placeholder="optional" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="b-notizen">Notizen</label>
+          <textarea id="b-notizen" rows="5" placeholder="Komponenten, Wartungshistorie, ..."></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Speichern</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Einstellungen ────────────────────────────────────────── -->
+  <div class="view" id="view-settings">
+    <div class="topbar">
+      <button class="icon-btn" id="btn-settings-back" aria-label="Zurück">←</button>
+      <h1>Einstellungen</h1>
+    </div>
+    <div class="content" style="padding-top:16px">
+      <section class="settings-section">
+        <h2 class="settings-header">Daten</h2>
+        <div class="settings-group">
+          <button class="settings-row tappable" id="btn-export">
+            <span class="settings-row-icon">📤</span>
+            <span class="settings-row-label">Exportieren</span>
+            <span class="settings-row-sub" id="last-export-label"></span>
+            <span class="settings-row-chevron">›</span>
+          </button>
+          <button class="settings-row tappable" id="btn-import">
+            <span class="settings-row-icon">📥</span>
+            <span class="settings-row-label">Importieren</span>
+            <span class="settings-row-sub">JSON-Datei laden</span>
+            <span class="settings-row-chevron">›</span>
+          </button>
+        </div>
+      </section>
+      <section class="settings-section">
+        <h2 class="settings-header">Info</h2>
+        <div class="settings-group">
+          <div class="settings-row">
+            <span class="settings-row-label">Version</span>
+            <span class="settings-row-sub">1.0.0</span>
+          </div>
+          <div class="settings-row">
+            <span class="settings-row-label">Fahrten gesamt</span>
+            <span class="settings-row-sub" id="settings-count">–</span>
+          </div>
+        </div>
+      </section>
+      <input type="file" id="import-input" accept=".json,application/json" hidden />
+    </div>
+  </div>
+
+  <!-- ── Toast ──────────────────────────────────────────────────── -->
+  <div id="toast" class="toast" hidden></div>
+
+  <!-- ── Confirm-Modal ──────────────────────────────────────────── -->
+  <div id="confirm-modal" class="modal-overlay" hidden>
+    <div class="modal">
+      <h2 id="confirm-title"></h2>
+      <p id="confirm-msg"></p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="confirm-cancel">Abbrechen</button>
+        <button class="btn btn-danger" id="confirm-ok">Bestätigen</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- #app -->
+
+<script>
+'use strict';
+
+// ── Constants ──────────────────────────────────────────────────
+const DB_NAME        = 'bike-log';
+const DB_VERSION     = 1;
+const STORE          = 'data';
+const DATA_KEY       = 'main';
+const APP_VERSION    = '1.0.0';
+const SCHEMA_VERSION = 1;
+const BACKUP_DAYS    = 7;
+
+// ── IndexedDB ──────────────────────────────────────────────────
+let _db = null;
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = e => e.target.result.createObjectStore(STORE);
+    req.onsuccess  = e => resolve(e.target.result);
+    req.onerror    = e => reject(e.target.error);
+  });
+}
+
+function dbLoad() {
+  return new Promise((resolve, reject) => {
+    const tx  = _db.transaction(STORE, 'readonly');
+    const req = tx.objectStore(STORE).get(DATA_KEY);
+    req.onsuccess = e => resolve(e.target.result ?? null);
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+function dbSave(data) {
+  return new Promise((resolve, reject) => {
+    const tx  = _db.transaction(STORE, 'readwrite');
+    const req = tx.objectStore(STORE).put(data, DATA_KEY);
+    req.onsuccess = () => resolve();
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+// ── State ──────────────────────────────────────────────────────
+let state = null;
+
+function emptyState() {
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    bike: { name: '', rahmennummer: '', notizen: '', fotoDataUrl: '' },
+    fahrten: [],
+    meta: { letzterExport: null, appVersion: APP_VERSION },
+  };
+}
+
+// ── Helpers ────────────────────────────────────────────────────
+const today = () => new Date().toISOString().slice(0, 10);
+
+function formatDate(iso) {
+  const [y, m, d] = iso.split('-');
+  return `${d}.${m}.${y}`;
+}
+
+function daysSince(isoStr) {
+  if (!isoStr) return Infinity;
+  return Math.floor((Date.now() - new Date(isoStr).getTime()) / 86_400_000);
+}
+
+const totalKm = () =>
+  state.fahrten.reduce((s, f) => s + (Number(f.km) || 0), 0);
+
+const sortedFahrten = () =>
+  [...state.fahrten].sort((a, b) => b.datum.localeCompare(a.datum));
+
+function fmtKm(km) {
+  return Number(km).toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+}
+
+// ── Toast ──────────────────────────────────────────────────────
+let _toastTimer = null;
+function showToast(msg, type = 'success') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `toast ${type}`;
+  el.hidden = false;
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { el.hidden = true; }, 3000);
+}
+
+// ── Confirm modal ──────────────────────────────────────────────
+function showConfirm(title, msg) {
+  return new Promise(resolve => {
+    const modal = document.getElementById('confirm-modal');
+    document.getElementById('confirm-title').textContent = title;
+    document.getElementById('confirm-msg').textContent   = msg;
+    modal.hidden = false;
+
+    const okBtn     = document.getElementById('confirm-ok');
+    const cancelBtn = document.getElementById('confirm-cancel');
+
+    function done(result) {
+      modal.hidden = true;
+      okBtn.removeEventListener('click', onOk);
+      cancelBtn.removeEventListener('click', onCancel);
+      resolve(result);
+    }
+    function onOk()     { done(true);  }
+    function onCancel() { done(false); }
+    okBtn.addEventListener('click', onOk);
+    cancelBtn.addEventListener('click', onCancel);
+  });
+}
+
+// ── View router ────────────────────────────────────────────────
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  const view = document.getElementById(id);
+  view.classList.add('active');
+  view.scrollTop = 0;
+}
+
+// ── Home ───────────────────────────────────────────────────────
+function renderHome() {
+  document.getElementById('total-km').textContent = fmtKm(totalKm());
+
+  const n = state.fahrten.length;
+  document.getElementById('stats-count').textContent =
+    n === 0 ? 'Noch keine Fahrten' : n === 1 ? '1 Fahrt' : `${n} Fahrten`;
+
+  const days   = daysSince(state.meta.letzterExport);
+  const banner = document.getElementById('backup-banner');
+  if (days >= BACKUP_DAYS) {
+    document.getElementById('banner-text').textContent = days === Infinity
+      ? 'Noch nie exportiert — Daten sichern!'
+      : `Letzte Sicherung vor ${days} Tagen`;
+    banner.hidden = false;
+  } else {
+    banner.hidden = true;
+  }
+
+  const sorted = sortedFahrten();
+  const list   = document.getElementById('fahrten-list');
+
+  if (sorted.length === 0) {
+    list.innerHTML = '<p class="empty-state">Noch keine Fahrten erfasst.<br>Tippe auf + um die erste hinzuzufügen.</p>';
+    return;
+  }
+
+  list.innerHTML = `
+    <p class="section-title">Fahrten</p>
+    ${sorted.map(f => `
+      <div class="fahrt-item" data-id="${f.id}">
+        <span class="fahrt-datum">${formatDate(f.datum)}</span>
+        ${f.notiz ? '<span class="fahrt-notiz-badge">Notiz</span>' : ''}
+        <span class="fahrt-km">${fmtKm(f.km)} km</span>
+        <span class="fahrt-chevron">›</span>
+      </div>
+    `).join('')}
+  `;
+
+  list.querySelectorAll('.fahrt-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const f = state.fahrten.find(f => f.id === el.dataset.id);
+      if (f) openFahrtForm(f);
+    });
+  });
+}
+
+// ── Fahrt form ─────────────────────────────────────────────────
+function openFahrtForm(fahrt = null) {
+  const isNew = !fahrt;
+  document.getElementById('fahrt-form-title').textContent = isNew ? 'Neue Fahrt' : 'Fahrt bearbeiten';
+  document.getElementById('f-datum').value  = fahrt?.datum ?? today();
+  document.getElementById('f-km').value     = fahrt ? fahrt.km : '';
+  document.getElementById('f-notiz').value  = fahrt?.notiz ?? '';
+  document.getElementById('f-id').value     = fahrt?.id ?? '';
+  document.getElementById('fahrt-delete-btn').hidden = isNew;
+  showView('view-fahrt');
+}
+
+async function saveFahrt(e) {
+  e.preventDefault();
+  const id    = document.getElementById('f-id').value;
+  const datum = document.getElementById('f-datum').value;
+  const km    = parseFloat(document.getElementById('f-km').value);
+  const notiz = document.getElementById('f-notiz').value.trim();
+
+  if (!datum || isNaN(km) || km <= 0) {
+    showToast('Bitte Datum und Kilometer angeben.', 'error');
+    return;
+  }
+
+  if (id) {
+    const idx = state.fahrten.findIndex(f => f.id === id);
+    if (idx !== -1) state.fahrten[idx] = { id, datum, km, notiz };
+  } else {
+    state.fahrten.push({ id: crypto.randomUUID(), datum, km, notiz });
+  }
+
+  try {
+    await dbSave(state);
+    renderHome();
+    showView('view-home');
+    showToast(id ? 'Fahrt aktualisiert.' : 'Fahrt gespeichert.');
+  } catch (err) {
+    showToast('Fehler beim Speichern: ' + err.message, 'error');
+  }
+}
+
+async function deleteFahrt() {
+  const id = document.getElementById('f-id').value;
+  if (!id) return;
+  const ok = await showConfirm('Fahrt löschen?', 'Diese Fahrt wird dauerhaft gelöscht.');
+  if (!ok) return;
+
+  state.fahrten = state.fahrten.filter(f => f.id !== id);
+  try {
+    await dbSave(state);
+    renderHome();
+    showView('view-home');
+    showToast('Fahrt gelöscht.');
+  } catch (err) {
+    showToast('Fehler beim Löschen: ' + err.message, 'error');
+  }
+}
+
+// ── Bike profile ───────────────────────────────────────────────
+function renderBike() {
+  document.getElementById('b-name').value        = state.bike.name;
+  document.getElementById('b-rahmennummer').value = state.bike.rahmennummer;
+  document.getElementById('b-notizen').value     = state.bike.notizen;
+  updateBikePhoto(state.bike.fotoDataUrl);
+}
+
+function updateBikePhoto(dataUrl) {
+  const img         = document.getElementById('bike-photo');
+  const placeholder = document.getElementById('photo-placeholder');
+  if (dataUrl) {
+    img.src = dataUrl;
+    img.hidden = false;
+    placeholder.hidden = true;
+  } else {
+    img.src = '';
+    img.hidden = true;
+    placeholder.hidden = false;
+  }
+}
+
+async function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const MAX = 1024;
+      let w = img.naturalWidth, h = img.naturalHeight;
+      if (w > MAX || h > MAX) {
+        if (w >= h) { h = Math.round(h * MAX / w); w = MAX; }
+        else        { w = Math.round(w * MAX / h); h = MAX; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', 0.8));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Bild konnte nicht geladen werden.')); };
+    img.src = url;
+  });
+}
+
+async function saveBike(e) {
+  e.preventDefault();
+  state.bike.name          = document.getElementById('b-name').value.trim();
+  state.bike.rahmennummer  = document.getElementById('b-rahmennummer').value.trim();
+  state.bike.notizen       = document.getElementById('b-notizen').value.trim();
+  try {
+    await dbSave(state);
+    showToast('Bike-Profil gespeichert.');
+    renderHome();
+    showView('view-home');
+  } catch (err) {
+    showToast('Fehler beim Speichern: ' + err.message, 'error');
+  }
+}
+
+// ── Settings ───────────────────────────────────────────────────
+function renderSettings() {
+  const days  = daysSince(state.meta.letzterExport);
+  const label = document.getElementById('last-export-label');
+  label.textContent = state.meta.letzterExport === null ? 'Noch nie'
+    : days === 0 ? 'Heute'
+    : `vor ${days} Tag${days === 1 ? '' : 'en'}`;
+  document.getElementById('settings-count').textContent = String(state.fahrten.length);
+}
+
+// ── Export ─────────────────────────────────────────────────────
+async function exportData() {
+  state.meta.letzterExport = new Date().toISOString();
+  try {
+    await dbSave(state);
+  } catch (err) {
+    showToast('Fehler: ' + err.message, 'error');
+    return;
+  }
+
+  const json     = JSON.stringify(state, null, 2);
+  const blob     = new Blob([json], { type: 'application/json' });
+  const filename = `bike-log-${today()}.json`;
+
+  if (navigator.share && navigator.canShare) {
+    const file = new File([blob], filename, { type: 'application/json' });
+    try {
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'Bike Log Export' });
+        showToast('Exportiert!');
+        renderHome();
+        renderSettings();
+        return;
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+    }
+  }
+
+  // Fallback: Download-Link
+  const url = URL.createObjectURL(blob);
+  const a   = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('Exportiert!');
+  renderHome();
+  renderSettings();
+}
+
+// ── Import ─────────────────────────────────────────────────────
+async function importData(file) {
+  let parsed;
+  try {
+    parsed = JSON.parse(await file.text());
+  } catch {
+    showToast('Ungültige JSON-Datei.', 'error');
+    return;
+  }
+
+  if (typeof parsed.schemaVersion !== 'number' || parsed.schemaVersion > SCHEMA_VERSION) {
+    showToast(`Unbekannte Schema-Version (${parsed.schemaVersion}).`, 'error');
+    return;
+  }
+  if (!Array.isArray(parsed.fahrten) || typeof parsed.bike !== 'object') {
+    showToast('Datei hat unbekanntes Format.', 'error');
+    return;
+  }
+
+  const ok = await showConfirm(
+    'Daten importieren?',
+    `${parsed.fahrten.length} Fahrten werden geladen. Die aktuellen Daten auf diesem Gerät werden überschrieben.`
+  );
+  if (!ok) return;
+
+  state = parsed;
+  try {
+    await dbSave(state);
+    renderHome();
+    renderSettings();
+    showView('view-home');
+    showToast('Import erfolgreich.');
+  } catch (err) {
+    showToast('Fehler beim Speichern: ' + err.message, 'error');
+  }
+}
+
+// ── Onboarding ─────────────────────────────────────────────────
+async function finishOnboarding(e) {
+  e.preventDefault();
+  state = emptyState();
+  state.bike.name         = document.getElementById('ob-name').value.trim();
+  state.bike.rahmennummer = document.getElementById('ob-rahmennummer').value.trim();
+  try {
+    await dbSave(state);
+    renderHome();
+    showView('view-home');
+  } catch (err) {
+    showToast('Fehler beim Speichern: ' + err.message, 'error');
+  }
+}
+
+// ── Event bindings ─────────────────────────────────────────────
+function bindEvents() {
+  // Onboarding
+  document.getElementById('onboarding-form').addEventListener('submit', finishOnboarding);
+
+  // Home nav
+  document.getElementById('btn-neue-fahrt').addEventListener('click', () => openFahrtForm());
+  document.getElementById('btn-goto-bike').addEventListener('click', () => { renderBike(); showView('view-bike'); });
+  document.getElementById('btn-goto-settings').addEventListener('click', () => { renderSettings(); showView('view-settings'); });
+  document.getElementById('banner-export-btn').addEventListener('click', exportData);
+  document.getElementById('banner-close-btn').addEventListener('click', () => {
+    document.getElementById('backup-banner').hidden = true;
+  });
+
+  // Fahrt form
+  document.getElementById('fahrt-form').addEventListener('submit', saveFahrt);
+  document.getElementById('fahrt-delete-btn').addEventListener('click', deleteFahrt);
+  document.getElementById('btn-fahrt-back').addEventListener('click', () => { renderHome(); showView('view-home'); });
+
+  // Bike profile
+  document.getElementById('bike-form').addEventListener('submit', saveBike);
+  document.getElementById('btn-bike-back').addEventListener('click', () => showView('view-home'));
+
+  const photoArea  = document.getElementById('photo-area');
+  const fotoInput  = document.getElementById('bike-foto-input');
+  photoArea.addEventListener('click', () => fotoInput.click());
+  photoArea.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') fotoInput.click(); });
+  fotoInput.addEventListener('change', async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const dataUrl = await compressImage(file);
+      state.bike.fotoDataUrl = dataUrl;
+      updateBikePhoto(dataUrl);
+    } catch {
+      showToast('Foto konnte nicht verarbeitet werden.', 'error');
+    }
+    fotoInput.value = '';
+  });
+
+  // Settings
+  document.getElementById('btn-settings-back').addEventListener('click', () => showView('view-home'));
+  document.getElementById('btn-export').addEventListener('click', exportData);
+  const importInput = document.getElementById('import-input');
+  document.getElementById('btn-import').addEventListener('click', () => importInput.click());
+  importInput.addEventListener('change', async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    await importData(file);
+    importInput.value = '';
+  });
+}
+
+// ── Service Worker ─────────────────────────────────────────────
+function registerSW() {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(err =>
+      console.warn('SW registration failed:', err)
+    );
+  }
+}
+
+// ── Init ───────────────────────────────────────────────────────
+async function init() {
+  try {
+    _db = await openDB();
+  } catch (err) {
+    document.body.innerHTML =
+      `<div style="padding:40px;color:red;font-family:sans-serif">IndexedDB-Fehler: ${err.message}</div>`;
+    return;
+  }
+
+  try {
+    state = await dbLoad();
+  } catch (err) {
+    showToast('Fehler beim Laden: ' + err.message, 'error');
+    state = null;
+  }
+
+  bindEvents();
+  registerSW();
+
+  if (!state) {
+    showView('view-onboarding');
+  } else {
+    renderHome();
+    showView('view-home');
+  }
+}
+
+init();
+</script>
+</body>
+</html>

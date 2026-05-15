@@ -453,6 +453,80 @@ textarea { resize: vertical; min-height: 80px; }
 .toast.error { background: var(--danger); }
 .toast.success { background: var(--accent); }
 
+/* ── Verschleissteile Warnklassen ───────────────────────────── */
+.warn-level-1 { color: var(--accent); }
+.warn-level-2 { color: var(--danger); font-weight: 700; }
+
+/* ── Bike-Schema (SVG-Komponenten) ───────────────────────────── */
+#view-bike-schema .content { padding: 8px 12px 24px; }
+.schema-wrap {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  padding: 12px;
+  margin-bottom: 12px;
+}
+.schema-hint {
+  font-size: 0.82rem;
+  color: var(--text-2);
+  text-align: center;
+  margin-top: 6px;
+}
+.schema-svg { width: 100%; height: auto; display: block; overflow: visible; }
+.schema-svg .frame-tube { fill: none; stroke: var(--text); stroke-width: 10; stroke-linecap: round; stroke-linejoin: round; }
+.schema-svg .fork       { fill: none; stroke: var(--text); stroke-width: 9;  stroke-linecap: round; stroke-linejoin: round; }
+.schema-svg .stay       { fill: none; stroke: var(--text); stroke-width: 7;  stroke-linecap: round; stroke-linejoin: round; }
+.schema-svg .bar        { fill: none; stroke: var(--text); stroke-width: 8;  stroke-linecap: round; stroke-linejoin: round; }
+.schema-svg .bar-thick  { stroke-width: 14; }
+.schema-svg .detail     { fill: none; stroke: var(--text); stroke-width: 3;  stroke-linecap: round; stroke-linejoin: round; }
+.schema-svg .thin       { fill: none; stroke: var(--text); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.schema-svg .ink-fill   { fill: var(--text); stroke: none; }
+.schema-svg .paper-fill { fill: var(--bg-card); stroke: var(--text); stroke-width: 1.4; }
+
+.schema-svg .hot { cursor: pointer; outline: none; -webkit-tap-highlight-color: transparent; }
+.schema-svg .hot .hit { fill: transparent; pointer-events: all; }
+.schema-svg .hot .part { transition: stroke 140ms ease, fill 140ms ease; }
+.schema-svg .hot:active .part:not(.ink-fill),
+.schema-svg .hot:focus-visible .part:not(.ink-fill) { stroke: var(--accent); }
+.schema-svg .hot:active .part.ink-fill,
+.schema-svg .hot:focus-visible .part.ink-fill { fill: var(--accent); }
+
+/* Warnzustände der Komponenten im Schema */
+.schema-svg .hot.warn-1 .part:not(.ink-fill) { stroke: var(--accent); }
+.schema-svg .hot.warn-1 .part.ink-fill { fill: var(--accent); }
+.schema-svg .hot.warn-2 .part:not(.ink-fill) { stroke: var(--danger); }
+.schema-svg .hot.warn-2 .part.ink-fill { fill: var(--danger); }
+
+/* ── Bottom-Sheet ────────────────────────────────────────────── */
+.sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.48);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 90;
+}
+.sheet {
+  background: var(--bg-card);
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: 18px 20px calc(var(--safe-bot) + 20px);
+  width: 100%;
+  max-width: 600px;
+}
+.sheet-handle {
+  width: 36px;
+  height: 4px;
+  background: var(--sep);
+  border-radius: 2px;
+  margin: -6px auto 14px;
+}
+.sheet-title { font-size: 1.05rem; font-weight: 700; margin-bottom: 4px; }
+.sheet-sub   { color: var(--text-2); font-size: 0.85rem; margin-bottom: 14px; }
+.sheet-km    { font-size: 1.6rem; font-weight: 600; margin: 8px 0 4px; }
+.sheet-actions { display: flex; gap: 10px; margin-top: 14px; }
+.sheet-actions .btn { flex: 1; }
+.sheet-empty { color: var(--text-2); font-size: 0.9rem; margin-bottom: 14px; }
+
 /* ── Confirm modal ────────────────────────────────────────────── */
 .modal-overlay {
   position: fixed;
@@ -507,6 +581,7 @@ textarea { resize: vertical; min-height: 80px; }
   <div class="view" id="view-home">
     <div class="topbar">
       <h1>Bike Log</h1>
+      <button class="icon-btn" id="btn-goto-schema" aria-label="Komponenten-Schema">🔧</button>
       <button class="icon-btn" id="btn-goto-bike" aria-label="Bike-Profil">🚲</button>
       <button class="icon-btn" id="btn-goto-settings" aria-label="Einstellungen">⚙️</button>
     </div>
@@ -569,6 +644,7 @@ textarea { resize: vertical; min-height: 80px; }
         <input type="file" id="bike-foto-input" accept="image/*" hidden />
       </div>
       <form id="bike-form">
+        <p class="form-section-title">Basisdaten</p>
         <div class="field">
           <label for="b-name">Name</label>
           <input id="b-name" type="text" placeholder="z.B. Trek Checkpoint" autocomplete="off" />
@@ -579,10 +655,59 @@ textarea { resize: vertical; min-height: 80px; }
         </div>
         <div class="field">
           <label for="b-notizen">Notizen</label>
-          <textarea id="b-notizen" rows="5" placeholder="Komponenten, Wartungshistorie, ..."></textarea>
+          <textarea id="b-notizen" rows="3" placeholder="Allgemeine Notizen..."></textarea>
         </div>
+
+        <p class="form-section-title">Ausstattung</p>
+        <div class="field">
+          <label for="b-ausstattung-rahmen">Rahmen</label>
+          <input id="b-ausstattung-rahmen" type="text" placeholder="z.B. Aluminium, Carbon" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="b-ausstattung-gabel">Gabel</label>
+          <input id="b-ausstattung-gabel" type="text" placeholder="z.B. Carbon, Federgabel" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="b-ausstattung-schaltgruppe">Schaltgruppe</label>
+          <input id="b-ausstattung-schaltgruppe" type="text" placeholder="z.B. Shimano GRX 820" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="b-ausstattung-bremsen">Bremsen</label>
+          <input id="b-ausstattung-bremsen" type="text" placeholder="z.B. Hydraulik Scheibenbremse" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="b-ausstattung-laufraeder">Laufräder</label>
+          <input id="b-ausstattung-laufraeder" type="text" placeholder="z.B. DT Swiss G 1800" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="b-ausstattung-sattel">Sattel</label>
+          <input id="b-ausstattung-sattel" type="text" placeholder="z.B. Selle Italia" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="b-ausstattung-lenker">Lenker</label>
+          <input id="b-ausstattung-lenker" type="text" placeholder="z.B. Dropbar 420mm" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="b-ausstattung-vorbau">Vorbau</label>
+          <input id="b-ausstattung-vorbau" type="text" placeholder="z.B. 100mm" autocomplete="off" />
+        </div>
+
         <button type="submit" class="btn btn-primary">Speichern</button>
       </form>
+
+      <div class="settings-group" style="margin-top:20px">
+        <button class="settings-row tappable" id="btn-bike-schema" type="button">
+          <span class="settings-row-icon">🚲</span>
+          <span class="settings-row-label">Komponenten-Schema</span>
+          <span class="settings-row-chevron">›</span>
+        </button>
+        <button class="settings-row tappable" id="btn-verschleissteile" type="button">
+          <span class="settings-row-icon">🔧</span>
+          <span class="settings-row-label">Verschleißteile verwalten</span>
+          <span class="settings-row-sub" id="verschleissteile-count">0 aktiv</span>
+          <span class="settings-row-chevron">›</span>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -615,7 +740,7 @@ textarea { resize: vertical; min-height: 80px; }
         <div class="settings-group">
           <div class="settings-row">
             <span class="settings-row-label">Version</span>
-            <span class="settings-row-sub">1.0.0</span>
+            <span class="settings-row-sub" id="app-version-label">2.0.0</span>
           </div>
           <div class="settings-row">
             <span class="settings-row-label">Fahrten gesamt</span>
@@ -624,6 +749,272 @@ textarea { resize: vertical; min-height: 80px; }
         </div>
       </section>
       <input type="file" id="import-input" accept=".json,application/json" hidden />
+    </div>
+  </div>
+
+  <!-- ── Verschleißteile Liste ──────────────────────────────────── -->
+  <div class="view" id="view-verschleissteile">
+    <div class="topbar">
+      <button class="icon-btn" id="btn-verschleissteile-back" aria-label="Zurück">←</button>
+      <h1>Verschleißteile</h1>
+    </div>
+    <div class="content" style="padding-top:8px">
+      <div class="settings-group" style="margin-bottom:16px">
+        <button class="settings-row tappable" id="btn-neues-verschleissteil" type="button">
+          <span class="settings-row-icon">➕</span>
+          <span class="settings-row-label">Neues Verschleissteil anlegen</span>
+          <span class="settings-row-chevron">›</span>
+        </button>
+      </div>
+      <div id="verschleissteile-list"></div>
+    </div>
+  </div>
+
+  <!-- ── Verschleissteil Formular ──────────────────────────────── -->
+  <div class="view" id="view-verschleissteil-form">
+    <div class="topbar">
+      <button class="icon-btn" id="btn-verschleissteil-form-back" aria-label="Zurück">←</button>
+      <h1 id="verschleissteil-form-title">Neues Verschleissteil</h1>
+    </div>
+    <div class="content" style="padding-top:8px">
+      <form id="verschleissteil-form">
+        <div class="field">
+          <label for="vt-typ">Typ *</label>
+          <select id="vt-typ" required>
+            <option value="">Bitte wählen</option>
+            <option value="mantel">Mantel</option>
+            <option value="kette">Kette</option>
+            <option value="kassette">Kassette</option>
+            <option value="kurbel">Kurbel</option>
+            <option value="kettenblatt">Kettenblatt</option>
+            <option value="schaltwerk">Schaltwerk</option>
+            <option value="bremsbelag">Bremsbelag</option>
+            <option value="bremsscheibe">Bremsscheibe</option>
+            <option value="zug">Zug (Schalt/Brems)</option>
+            <option value="lenkerband">Lenkerband</option>
+            <option value="sonstiges">Sonstiges</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="vt-position">Position</label>
+          <select id="vt-position">
+            <option value="">– keine –</option>
+            <option value="vorne">Vorne</option>
+            <option value="hinten">Hinten</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="vt-bezeichnung">Bezeichnung</label>
+          <input id="vt-bezeichnung" type="text" placeholder="z.B. Schwalbe G-One R 45mm" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="vt-eingebautAm">Eingebaut am *</label>
+          <input id="vt-eingebautAm" type="date" required />
+        </div>
+        <div class="field">
+          <label for="vt-erwarteteKm">Erwartete km</label>
+          <input id="vt-erwarteteKm" type="number" inputmode="numeric" min="0" step="100" placeholder="Default wird automatisch gesetzt" />
+        </div>
+        <div class="field">
+          <label for="vt-notiz">Notiz</label>
+          <textarea id="vt-notiz" rows="3" placeholder="optional"></textarea>
+        </div>
+        <input type="hidden" id="vt-id" />
+        <input type="hidden" id="vt-status" />
+        <button type="submit" class="btn btn-primary">Speichern</button>
+        <button type="button" class="btn btn-secondary" id="vt-tauschen-btn" hidden>Tauschen</button>
+        <button type="button" class="btn btn-danger" id="vt-delete-btn" hidden>Löschen</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Bike-Schema (interaktive Seitenansicht) ──────────────── -->
+  <div class="view" id="view-bike-schema">
+    <div class="topbar">
+      <button class="icon-btn" id="btn-bike-schema-back" aria-label="Zurück">←</button>
+      <h1>Komponenten-Schema</h1>
+    </div>
+    <div class="content">
+      <div class="schema-wrap">
+        <svg class="schema-svg" viewBox="0 0 1200 900" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Gravel Bike, Seitenansicht">
+          <!-- ground reference -->
+          <g class="thin" opacity=".4">
+            <line x1="40" y1="780" x2="1160" y2="780" stroke-dasharray="2 7"/>
+          </g>
+
+          <!-- FRAME -->
+          <g id="svg-rahmen">
+            <line class="frame-tube" x1="818" y1="186" x2="415" y2="225"/>
+            <line class="frame-tube" x1="852" y1="285" x2="545" y2="588"/>
+            <line class="frame-tube" x1="545" y1="588" x2="415" y2="225"/>
+            <line class="bar" x1="415" y1="225" x2="378" y2="100"/>
+            <circle class="ink-fill" cx="415" cy="225" r="8"/>
+            <line class="frame-tube" x1="852" y1="285" x2="811" y2="167" stroke-width="14"/>
+            <line class="stay" x1="545" y1="588" x2="240" y2="540"/>
+            <line class="stay" x1="240" y1="540" x2="415" y2="225"/>
+            <circle class="ink-fill" cx="415" cy="225" r="3.2"/>
+            <circle class="ink-fill" cx="818" cy="186" r="3.2"/>
+            <circle class="ink-fill" cx="545" cy="588" r="3.5"/>
+          </g>
+
+          <!-- FORK -->
+          <g id="svg-gabel">
+            <line class="fork" x1="852" y1="285" x2="970" y2="540"/>
+            <circle class="ink-fill" cx="852" cy="285" r="3"/>
+          </g>
+
+          <!-- SADDLE -->
+          <g id="svg-sattel">
+            <path class="ink-fill" d="M 295 90 Q 365 78, 418 82 Q 472 86, 488 100 L 488 108 Q 472 106, 418 106 Q 350 106, 295 100 Z"/>
+            <path class="ink-fill" d="M 278 96 L 298 92 L 298 100 L 282 104 Z"/>
+          </g>
+
+          <!-- COCKPIT (Lenker + Stem) — interaktiv für Lenkerband -->
+          <g id="svg-cockpit" class="hot" tabindex="0" role="button" aria-label="Lenker / Lenkerband" data-typ="lenkerband" data-position="">
+            <line class="part bar" x1="811" y1="167" x2="891" y2="165"/>
+            <circle class="part ink-fill" cx="891" cy="165" r="7"/>
+            <path class="part bar bar-thick" fill="none" d="M 891 165 C 944 158, 1000 174, 1014 214 C 1024 254, 998 282, 958 280 C 928 278, 906 264, 894 252"/>
+            <rect class="hit" x="870" y="148" width="170" height="150"/>
+          </g>
+
+          <!-- REAR WHEEL -->
+          <g id="svg-laufrad-hinten">
+            <g class="spokes-r"></g>
+            <circle class="detail" cx="240" cy="540" r="206"/>
+            <circle class="detail" cx="240" cy="540" r="200" stroke-width="1.2"/>
+            <circle class="paper-fill" cx="240" cy="540" r="22"/>
+            <circle class="ink-fill" cx="240" cy="540" r="6"/>
+          </g>
+
+          <!-- FRONT WHEEL -->
+          <g id="svg-laufrad-vorne">
+            <g class="spokes-f"></g>
+            <circle class="detail" cx="970" cy="540" r="206"/>
+            <circle class="detail" cx="970" cy="540" r="200" stroke-width="1.2"/>
+            <circle class="paper-fill" cx="970" cy="540" r="22"/>
+            <circle class="ink-fill" cx="970" cy="540" r="6"/>
+          </g>
+
+          <!-- TIRES — interaktiv -->
+          <g id="svg-mantel-hinten" class="hot" tabindex="0" role="button" aria-label="Reifen hinten" data-typ="mantel" data-position="hinten">
+            <path class="part ink-fill" fill-rule="evenodd"
+                  d="M 240 540 m -240 0 a 240 240 0 1 0 480 0 a 240 240 0 1 0 -480 0
+                     M 240 540 m -206 0 a 206 206 0 1 0 412 0 a 206 206 0 1 0 -412 0"/>
+            <g class="tread-r"></g>
+            <rect class="hit" x="0" y="300" width="480" height="480"/>
+          </g>
+
+          <g id="svg-mantel-vorne" class="hot" tabindex="0" role="button" aria-label="Reifen vorne" data-typ="mantel" data-position="vorne">
+            <path class="part ink-fill" fill-rule="evenodd"
+                  d="M 970 540 m -240 0 a 240 240 0 1 0 480 0 a 240 240 0 1 0 -480 0
+                     M 970 540 m -206 0 a 206 206 0 1 0 412 0 a 206 206 0 1 0 -412 0"/>
+            <g class="tread-f"></g>
+            <rect class="hit" x="730" y="300" width="480" height="480"/>
+          </g>
+
+          <!-- FRONT BRAKE — interaktiv (Bremsbelag vorne) -->
+          <g id="svg-bremse-vorne" class="hot" tabindex="0" role="button" aria-label="Bremse vorne" data-typ="bremsbelag" data-position="vorne">
+            <circle class="part thin" cx="970" cy="540" r="80" stroke-dasharray="2 3" opacity=".7"/>
+            <circle class="part thin" cx="970" cy="540" r="58" stroke-dasharray="1 4" opacity=".55"/>
+            <rect class="part ink-fill" x="936" y="468" width="22" height="34" rx="2"/>
+            <rect class="part paper-fill" x="942" y="473" width="10" height="24" stroke-width="1"/>
+            <circle class="part ink-fill" cx="942" cy="466" r="1.7"/>
+            <circle class="part ink-fill" cx="952" cy="466" r="1.7"/>
+            <rect class="hit" x="910" y="448" width="80" height="100"/>
+          </g>
+
+          <!-- REAR BRAKE — interaktiv (Bremsbelag hinten) -->
+          <g id="svg-bremse-hinten" class="hot" tabindex="0" role="button" aria-label="Bremse hinten" data-typ="bremsbelag" data-position="hinten">
+            <circle class="part thin" cx="240" cy="540" r="86" stroke-dasharray="2 3" opacity=".75"/>
+            <circle class="part thin" cx="240" cy="540" r="62" stroke-dasharray="1 4" opacity=".55"/>
+            <g transform="rotate(9 268 510)">
+              <rect class="part ink-fill" x="252" y="492" width="36" height="22" rx="2"/>
+              <rect class="part paper-fill" x="258" y="497" width="24" height="12" stroke-width="1"/>
+              <circle class="part ink-fill" cx="260" cy="490" r="1.6"/>
+              <circle class="part ink-fill" cx="280" cy="490" r="1.6"/>
+            </g>
+            <rect class="hit" x="230" y="478" width="80" height="80"/>
+          </g>
+
+          <!-- CASSETTE -->
+          <g id="svg-kassette" class="hot" tabindex="0" role="button" aria-label="Kassette" data-typ="kassette" data-position="">
+            <circle class="part detail" cx="240" cy="540" r="64"/>
+            <circle class="part thin" cx="240" cy="540" r="56"/>
+            <circle class="part thin" cx="240" cy="540" r="48"/>
+            <circle class="part thin" cx="240" cy="540" r="40"/>
+            <circle class="part thin" cx="240" cy="540" r="32"/>
+            <g class="cassette-teeth"></g>
+            <rect class="hit" x="170" y="468" width="144" height="144"/>
+          </g>
+
+          <!-- CHAIN -->
+          <g id="svg-kette" class="hot" tabindex="0" role="button" aria-label="Kette" data-typ="kette" data-position="">
+            <line class="part detail" stroke-width="4" x1="240" y1="476" x2="545" y2="525"/>
+            <path class="part detail" stroke-width="4" fill="none"
+                  d="M 545 651 L 290 642 Q 268 642 262 630 L 256 612 Q 252 600 244 604 L 222 614"/>
+            <rect class="hit" x="240" y="450" width="320" height="220"/>
+          </g>
+
+          <!-- REAR DERAILLEUR -->
+          <g id="svg-schaltwerk" class="hot" tabindex="0" role="button" aria-label="Schaltwerk" data-typ="schaltwerk" data-position="">
+            <line class="part detail" stroke-width="2.6" x1="240" y1="558" x2="256" y2="590"/>
+            <path class="part ink-fill" d="M 252 588 L 286 596 L 280 614 L 246 606 Z"/>
+            <path class="part detail" stroke-width="2" fill="none" d="M 268 612 L 268 632 L 248 642 L 242 624 Z"/>
+            <circle class="part paper-fill" cx="262" cy="616" r="7"/>
+            <circle class="part ink-fill" cx="262" cy="616" r="1.8"/>
+            <circle class="part paper-fill" cx="245" cy="638" r="7"/>
+            <circle class="part ink-fill" cx="245" cy="638" r="1.8"/>
+            <rect class="hit" x="230" y="580" width="78" height="78"/>
+          </g>
+
+          <!-- CRANK + CHAINRING -->
+          <g id="svg-kurbel" class="hot" tabindex="0" role="button" aria-label="Kurbel / Kettenblatt" data-typ="kurbel" data-position="">
+            <circle class="part detail" stroke-width="3.5" cx="545" cy="588" r="62"/>
+            <circle class="part thin" cx="545" cy="588" r="54"/>
+            <g class="chainring-teeth"></g>
+            <line class="part thin" x1="545" y1="588" x2="545" y2="538"/>
+            <line class="part thin" x1="545" y1="588" x2="595" y2="588"/>
+            <line class="part thin" x1="545" y1="588" x2="545" y2="638"/>
+            <line class="part thin" x1="545" y1="588" x2="495" y2="588"/>
+            <path class="part ink-fill" d="M 531 602 L 631 686 L 643 700 L 631 712 L 519 618 Z"/>
+            <rect class="part ink-fill" x="631" y="696" width="28" height="8" rx="1.5"/>
+            <rect class="part detail" stroke-width="3" x="639" y="684" width="58" height="32" rx="3" style="fill:var(--bg-card)"/>
+            <line class="part thin" x1="649" y1="694" x2="689" y2="694"/>
+            <line class="part thin" x1="649" y1="706" x2="689" y2="706"/>
+            <circle class="part paper-fill" cx="545" cy="588" r="14"/>
+            <circle class="part ink-fill" cx="545" cy="588" r="4"/>
+            <rect class="hit" x="466" y="545" width="232" height="200"/>
+          </g>
+        </svg>
+        <p class="schema-hint">Tippe eine Komponente an für Details</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Komponenten-Bottom-Sheet ────────────────────────────── -->
+  <div class="sheet-overlay" id="komponente-sheet" hidden>
+    <div class="sheet" role="dialog" aria-modal="true">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title" id="sheet-title">–</div>
+      <div class="sheet-sub" id="sheet-sub"></div>
+      <div class="sheet-km" id="sheet-km" hidden></div>
+      <div class="sheet-empty" id="sheet-empty" hidden>Noch nicht erfasst.</div>
+      <div class="sheet-actions" id="sheet-actions"></div>
+    </div>
+  </div>
+
+  <!-- ── Tausch-Grund-Modal ──────────────────────────────────── -->
+  <div class="modal-overlay" id="tauschen-modal" hidden>
+    <div class="modal">
+      <h2>Tauschen</h2>
+      <p>Warum wird das Teil getauscht? (optional)</p>
+      <div class="field">
+        <input id="tauschen-grund-input" type="text" placeholder="z.B. abgefahren, beschädigt" autocomplete="off" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="tauschen-cancel">Abbrechen</button>
+        <button class="btn btn-primary" id="tauschen-ok">Tauschen</button>
+      </div>
     </div>
   </div>
 
@@ -649,12 +1040,46 @@ textarea { resize: vertical; min-height: 80px; }
 
 // ── Constants ──────────────────────────────────────────────────
 const DB_NAME        = 'bike-log';
-const DB_VERSION     = 1;
+const DB_VERSION     = 2;
 const STORE          = 'data';
 const DATA_KEY       = 'main';
-const APP_VERSION    = '1.0.0';
-const SCHEMA_VERSION = 1;
+const APP_VERSION    = '2.0.0';
+const SCHEMA_VERSION = 2;
 const BACKUP_DAYS    = 7;
+
+// ── Verschleissteil Defaults ──────────────────────────────────
+const DEFAULT_ERWARTETE_KM = {
+  mantel: 4000,
+  kette: 3000,
+  kassette: 9000,
+  bremsbelag: 2000,
+  bremsscheibe: 15000,
+  lenkerband: 3000
+};
+
+// ── Verschleissteil Typen & Positionen ────────────────────────
+const VALID_TYPEN = ['mantel', 'kette', 'kassette', 'kurbel', 'kettenblatt', 'schaltwerk', 'bremsbelag', 'bremsscheibe', 'zug', 'lenkerband', 'sonstiges'];
+const VALID_POSITIONEN = ['vorne', 'hinten', null];
+
+// ── SVG-Schema: Mapping Komponente → Verschleissteil ──────────
+// Erweitern: neuen Eintrag hinzufügen, passende <g class="hot" data-typ data-position> ins SVG, fertig.
+const SVG_KOMPONENTEN = [
+  { svgId: 'svg-mantel-vorne',   typ: 'mantel',     position: 'vorne',  label: 'Reifen vorne' },
+  { svgId: 'svg-mantel-hinten',  typ: 'mantel',     position: 'hinten', label: 'Reifen hinten' },
+  { svgId: 'svg-kette',          typ: 'kette',      position: null,     label: 'Kette' },
+  { svgId: 'svg-kassette',       typ: 'kassette',   position: null,     label: 'Kassette' },
+  { svgId: 'svg-kurbel',         typ: 'kurbel',     position: null,     label: 'Kurbel / Kettenblatt' },
+  { svgId: 'svg-schaltwerk',     typ: 'schaltwerk', position: null,     label: 'Schaltwerk' },
+  { svgId: 'svg-bremse-vorne',   typ: 'bremsbelag', position: 'vorne',  label: 'Bremse vorne' },
+  { svgId: 'svg-bremse-hinten',  typ: 'bremsbelag', position: 'hinten', label: 'Bremse hinten' },
+  { svgId: 'svg-cockpit',        typ: 'lenkerband', position: null,     label: 'Lenkerband' }
+];
+
+const TYP_LABEL = {
+  mantel: 'Mantel', kette: 'Kette', kassette: 'Kassette', kurbel: 'Kurbel',
+  kettenblatt: 'Kettenblatt', schaltwerk: 'Schaltwerk', bremsbelag: 'Bremsbelag',
+  bremsscheibe: 'Bremsscheibe', zug: 'Zug', lenkerband: 'Lenkerband', sonstiges: 'Sonstiges'
+};
 
 // ── IndexedDB ──────────────────────────────────────────────────
 let _db = null;
@@ -662,17 +1087,59 @@ let _db = null;
 function openDB() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = e => e.target.result.createObjectStore(STORE);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE)) {
+        db.createObjectStore(STORE);
+      }
+    };
     req.onsuccess  = e => resolve(e.target.result);
     req.onerror    = e => reject(e.target.error);
   });
 }
 
-function dbLoad() {
+// ── Migration v1 → v2 ────────────────────────────────────────
+function migrateState(oldState) {
+  // bereits v2 oder höher
+  if (oldState.schemaVersion >= 2) return oldState;
+
+  const newState = { ...oldState, schemaVersion: 2 };
+
+  // Bike: Ausstattung ergänzen
+  newState.bike = { ...oldState.bike };
+  newState.bike.ausstattung = {
+    rahmen: '',
+    gabel: '',
+    schaltgruppe: '',
+    bremsen: '',
+    laufraeder: '',
+    sattel: '',
+    lenker: '',
+    vorbau: ''
+  };
+
+  // Verschleissteile-Array hinzufügen
+  newState.verschleissteile = [];
+
+  // Meta aktualisieren
+  newState.meta = { ...oldState.meta, appVersion: APP_VERSION };
+
+  return newState;
+}
+
+async function dbLoad() {
   return new Promise((resolve, reject) => {
     const tx  = _db.transaction(STORE, 'readonly');
     const req = tx.objectStore(STORE).get(DATA_KEY);
-    req.onsuccess = e => resolve(e.target.result ?? null);
+    req.onsuccess = e => {
+      const data = e.target.result ?? null;
+      if (data) {
+        // Migration wenn nötig
+        resolve(migrateState(data));
+      } else {
+        resolve(null);
+      }
+    };
     req.onerror   = e => reject(e.target.error);
   });
 }
@@ -692,8 +1159,24 @@ let state = null;
 function emptyState() {
   return {
     schemaVersion: SCHEMA_VERSION,
-    bike: { name: '', rahmennummer: '', notizen: '', fotoDataUrl: '' },
+    bike: {
+      name: '',
+      rahmennummer: '',
+      notizen: '',
+      fotoDataUrl: '',
+      ausstattung: {
+        rahmen: '',
+        gabel: '',
+        schaltgruppe: '',
+        bremsen: '',
+        laufraeder: '',
+        sattel: '',
+        lenker: '',
+        vorbau: ''
+      }
+    },
     fahrten: [],
+    verschleissteile: [],
     meta: { letzterExport: null, appVersion: APP_VERSION },
   };
 }
@@ -719,6 +1202,113 @@ const sortedFahrten = () =>
 
 function fmtKm(km) {
   return Number(km).toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+}
+
+// ── Verschleissteile Helfer ────────────────────────────────────
+
+/** Berechnet die aktuelle km eines Verschleissteils basierend auf allen Fahrten ab eingebautAm */
+function getAktuelleKm(verschleissteil) {
+  if (!verschleissteil.eingebautAm) return 0;
+  const eingebaut = verschleissteil.eingebautAm;
+  return state.fahrten
+    .filter(f => f.datum >= eingebaut)
+    .reduce((s, f) => s + (Number(f.km) || 0), 0);
+}
+
+/** Gibt den Default erwarteteKm-Wert für einen Typ zurück */
+function getDefaultErwarteteKm(typ) {
+  return DEFAULT_ERWARTETE_KM[typ] ?? null;
+}
+
+/** Formatiert die km-Anzeige für ein Verschleissteil: "1.840 / ~4.000 km" oder "1.840 km" */
+function formatVerschleissteilKm(verschleissteil) {
+  const aktuelleKm = getAktuelleKm(verschleissteil);
+  const fmtAktuell = fmtKm(aktuelleKm);
+  
+  if (!verschleissteil.erwarteteKm && verschleissteil.erwarteteKm !== 0) {
+    return `${fmtAktuell} km`;
+  }
+  
+  const fmtErwartet = fmtKm(verschleissteil.erwarteteKm);
+  return `${fmtAktuell} / ~${fmtErwartet} km`;
+}
+
+/** Bestimmt die Warnfarben-Klasse für ein Verschleissteil */
+function getVerschleissteilWarnKlasse(verschleissteil) {
+  if (!verschleissteil.erwarteteKm && verschleissteil.erwarteteKm !== 0) {
+    return '';
+  }
+  
+  const aktuelleKm = getAktuelleKm(verschleissteil);
+  const erwarteteKm = verschleissteil.erwarteteKm;
+  
+  if (aktuelleKm === 0 || erwarteteKm === 0) return '';
+  
+  const ratio = aktuelleKm / erwarteteKm;
+  
+  if (ratio >= 1.0) {
+    return 'warn-level-2';
+  } else if (ratio >= 0.9) {
+    return 'warn-level-1';
+  }
+  return '';
+}
+
+/** Erstellt ein neues Verschleissteil-Objekt mit Defaults */
+function createVerschleissteil(overrides = {}) {
+  const typ = overrides.typ || '';
+  return {
+    id: overrides.id || crypto.randomUUID(),
+    typ: typ,
+    position: overrides.position ?? null,
+    bezeichnung: overrides.bezeichnung || '',
+    eingebautAm: overrides.eingebautAm || today(),
+    erwarteteKm: overrides.erwarteteKm !== undefined
+      ? overrides.erwarteteKm
+      : (getDefaultErwarteteKm(typ) ?? null),
+    status: overrides.status || 'aktiv',
+    ausgebautAm: overrides.ausgebautAm ?? null,
+    ausbauGrund: overrides.ausbauGrund || '',
+    notiz: overrides.notiz || ''
+  };
+}
+
+/** Wechselt ein Verschleissteil (archiviert altes, erstellt neues) */
+function tauscheVerschleissteil(vt) {
+  const alt = state.verschleissteile.find(v => v.id === vt.id);
+  if (!alt || alt.status !== 'aktiv') return null;
+
+  // Alt archivieren
+  alt.status = 'archiviert';
+  alt.ausgebautAm = today();
+  alt.ausbauGrund = vt.ausbauGrund || '';
+
+  // Neues anlegen
+  const neu = createVerschleissteil({
+    typ: alt.typ,
+    position: alt.position,
+    eingebautAm: today(),
+    erwarteteKm: alt.erwarteteKm
+  });
+
+  state.verschleissteile.push(neu);
+  return neu;
+}
+
+/** Löscht ein Verschleissteil */
+function loescheVerschleissteil(id) {
+  state.verschleissteile = state.verschleissteile.filter(v => v.id !== id);
+}
+
+// Sortiert Verschleissteile: aktive zuerst, dann nach Typ/Position
+function sortedVerschleissteile() {
+  return [...state.verschleissteile].sort((a, b) => {
+    // Aktive zuerst
+    if (a.status === 'aktiv' && b.status !== 'aktiv') return -1;
+    if (b.status === 'aktiv' && a.status !== 'aktiv') return 1;
+    // Dann nach Typ
+    return a.typ.localeCompare(b.typ);
+  });
 }
 
 // ── Toast ──────────────────────────────────────────────────────
@@ -875,6 +1465,21 @@ function renderBike() {
   document.getElementById('b-rahmennummer').value = state.bike.rahmennummer;
   document.getElementById('b-notizen').value     = state.bike.notizen;
   updateBikePhoto(state.bike.fotoDataUrl);
+
+  // Ausstattung
+  const a = state.bike.ausstattung || {};
+  document.getElementById('b-ausstattung-rahmen').value     = a.rahmen || '';
+  document.getElementById('b-ausstattung-gabel').value      = a.gabel || '';
+  document.getElementById('b-ausstattung-schaltgruppe').value = a.schaltgruppe || '';
+  document.getElementById('b-ausstattung-bremsen').value    = a.bremsen || '';
+  document.getElementById('b-ausstattung-laufraeder').value = a.laufraeder || '';
+  document.getElementById('b-ausstattung-sattel').value    = a.sattel || '';
+  document.getElementById('b-ausstattung-lenker').value    = a.lenker || '';
+  document.getElementById('b-ausstattung-vorbau').value    = a.vorbau || '';
+
+  // Verschleissteile Count
+  const aktivCount = state.verschleissteile?.filter(v => v.status === 'aktiv').length || 0;
+  document.getElementById('verschleissteile-count').textContent = `${aktivCount} aktiv`;
 }
 
 function updateBikePhoto(dataUrl) {
@@ -918,6 +1523,18 @@ async function saveBike(e) {
   state.bike.name          = document.getElementById('b-name').value.trim();
   state.bike.rahmennummer  = document.getElementById('b-rahmennummer').value.trim();
   state.bike.notizen       = document.getElementById('b-notizen').value.trim();
+  
+  // Ausstattung speichern
+  if (!state.bike.ausstattung) state.bike.ausstattung = {};
+  state.bike.ausstattung.rahmen      = document.getElementById('b-ausstattung-rahmen').value.trim();
+  state.bike.ausstattung.gabel       = document.getElementById('b-ausstattung-gabel').value.trim();
+  state.bike.ausstattung.schaltgruppe = document.getElementById('b-ausstattung-schaltgruppe').value.trim();
+  state.bike.ausstattung.bremsen      = document.getElementById('b-ausstattung-bremsen').value.trim();
+  state.bike.ausstattung.laufraeder   = document.getElementById('b-ausstattung-laufraeder').value.trim();
+  state.bike.ausstattung.sattel       = document.getElementById('b-ausstattung-sattel').value.trim();
+  state.bike.ausstattung.lenker       = document.getElementById('b-ausstattung-lenker').value.trim();
+  state.bike.ausstattung.vorbau       = document.getElementById('b-ausstattung-vorbau').value.trim();
+  
   try {
     await dbSave(state);
     showToast('Bike-Profil gespeichert.');
@@ -936,6 +1553,333 @@ function renderSettings() {
     : days === 0 ? 'Heute'
     : `vor ${days} Tag${days === 1 ? '' : 'en'}`;
   document.getElementById('settings-count').textContent = String(state.fahrten.length);
+  document.getElementById('app-version-label').textContent = state.meta.appVersion ?? APP_VERSION;
+}
+
+// ── Verschleissteile UI ────────────────────────────────────────
+
+function renderVerschleissteile() {
+  const listEl = document.getElementById('verschleissteile-list');
+  const vtList = sortedVerschleissteile();
+
+  if (vtList.length === 0) {
+    listEl.innerHTML = '<p class="empty-state">Noch keine Verschleissteile erfasst.<br>Tippe auf "Neues Verschleissteil anlegen".</p>';
+    return;
+  }
+
+  // Gruppieren nach Status
+  const aktive = vtList.filter(v => v.status === 'aktiv');
+  const archiviert = vtList.filter(v => v.status === 'archiviert');
+
+  let html = '';
+
+  if (aktive.length > 0) {
+    html += `<p class="section-title">Aktiv (${aktive.length})</p>`;
+    html += aktive.map(vt => renderVerschleissteilItem(vt)).join('');
+  }
+
+  if (archiviert.length > 0) {
+    html += `<p class="section-title" style="margin-top:16px">Archiviert (${archiviert.length})</p>`;
+    html += archiviert.map(vt => renderVerschleissteilItem(vt)).join('');
+  }
+
+  listEl.innerHTML = html;
+}
+
+function renderVerschleissteilItem(vt) {
+  const warnKlasse = getVerschleissteilWarnKlasse(vt);
+  const kmText = formatVerschleissteilKm(vt);
+  const positionText = vt.position ? ` (${vt.position})` : '';
+  
+  return `
+    <div class="settings-group" style="margin-bottom:8px">
+      <button class="settings-row tappable" data-id="${vt.id}" type="button">
+        <span class="settings-row-icon">🔧</span>
+        <span class="settings-row-label">${vt.typ}${positionText}</span>
+        <span class="settings-row-sub ${warnKlasse}">${vt.bezeichnung || '–'}</span>
+        <span class="settings-row-sub ${warnKlasse}">${kmText}</span>
+        <span class="settings-row-chevron">›</span>
+      </button>
+    </div>
+  `;
+}
+
+function openVerschleissteilForm(vt = null) {
+  const isNew = !vt;
+  const form = document.getElementById('verschleissteil-form');
+  
+  document.getElementById('verschleissteil-form-title').textContent = isNew ? 'Neues Verschleissteil' : 'Verschleissteil bearbeiten';
+  document.getElementById('vt-id').value = vt?.id || '';
+  document.getElementById('vt-typ').value = vt?.typ || '';
+  document.getElementById('vt-position').value = vt?.position || '';
+  document.getElementById('vt-bezeichnung').value = vt?.bezeichnung || '';
+  document.getElementById('vt-eingebautAm').value = vt?.eingebautAm || today();
+  document.getElementById('vt-erwarteteKm').value = vt?.erwarteteKm !== null && vt?.erwarteteKm !== undefined ? vt.erwarteteKm : '';
+  document.getElementById('vt-notiz').value = vt?.notiz || '';
+  document.getElementById('vt-status').value = vt?.status || 'aktiv';
+  
+  // Buttons sichtbarkeit
+  document.getElementById('vt-tauschen-btn').hidden = isNew || vt.status !== 'aktiv';
+  document.getElementById('vt-delete-btn').hidden = isNew;
+  
+  showView('view-verschleissteil-form');
+}
+
+function getFormVerschleissteil() {
+  return {
+    id: document.getElementById('vt-id').value,
+    typ: document.getElementById('vt-typ').value,
+    position: document.getElementById('vt-position').value || null,
+    bezeichnung: document.getElementById('vt-bezeichnung').value.trim(),
+    eingebautAm: document.getElementById('vt-eingebautAm').value,
+    erwarteteKm: document.getElementById('vt-erwarteteKm').value 
+      ? parseInt(document.getElementById('vt-erwarteteKm').value, 10) 
+      : null,
+    notiz: document.getElementById('vt-notiz').value.trim()
+  };
+}
+
+async function saveVerschleissteil(e) {
+  e.preventDefault();
+  
+  const formData = getFormVerschleissteil();
+  
+  // Validierung
+  if (!formData.typ || !formData.eingebautAm) {
+    showToast('Typ und Eingebaut-Datum sind Pflichtfelder.', 'error');
+    return;
+  }
+
+  const id = formData.id;
+  const isNew = !id;
+
+  // Beim Edit: bestehende Felder (ausgebautAm, ausbauGrund) erhalten
+  const existing = isNew ? null : state.verschleissteile.find(v => v.id === id);
+
+  const vt = createVerschleissteil({
+    id: isNew ? null : id,
+    typ: formData.typ,
+    position: formData.position,
+    bezeichnung: formData.bezeichnung,
+    eingebautAm: formData.eingebautAm,
+    erwarteteKm: formData.erwarteteKm,
+    status: document.getElementById('vt-status').value || 'aktiv',
+    notiz: formData.notiz,
+    ausgebautAm: existing?.ausgebautAm,
+    ausbauGrund: existing?.ausbauGrund
+  });
+
+  if (isNew) {
+    state.verschleissteile.push(vt);
+  } else {
+    const idx = state.verschleissteile.findIndex(v => v.id === id);
+    if (idx !== -1) {
+      state.verschleissteile[idx] = vt;
+    }
+  }
+
+  try {
+    await dbSave(state);
+    renderVerschleissteile();
+    showToast(isNew ? 'Verschleissteil angelegt.' : 'Verschleissteil aktualisiert.');
+    showView('view-verschleissteile');
+  } catch (err) {
+    showToast('Fehler beim Speichern: ' + err.message, 'error');
+  }
+}
+
+async function deleteVerschleissteil() {
+  const id = document.getElementById('vt-id').value;
+  if (!id) return;
+  
+  const ok = await showConfirm('Verschleissteil löschen?', 'Dieses Verschleissteil wird dauerhaft gelöscht.');
+  if (!ok) return;
+
+  loescheVerschleissteil(id);
+  
+  try {
+    await dbSave(state);
+    renderVerschleissteile();
+    showToast('Verschleissteil gelöscht.');
+    showView('view-verschleissteile');
+  } catch (err) {
+    showToast('Fehler beim Löschen: ' + err.message, 'error');
+  }
+}
+
+async function tauscheVerschleissteilHandler() {
+  const id = document.getElementById('vt-id').value;
+  if (!id) return;
+
+  const ausbauGrund = await showTauschenGrundDialog();
+  if (ausbauGrund === null) return; // Abgebrochen
+
+  const alt = state.verschleissteile.find(v => v.id === id);
+  if (!alt || alt.status !== 'aktiv') {
+    showToast('Nur aktive Teile können getauscht werden.', 'error');
+    return;
+  }
+
+  const neu = tauscheVerschleissteil({ id, ausbauGrund });
+  
+  try {
+    await dbSave(state);
+    renderVerschleissteile();
+    // Direkt ins neue Teil springen
+    openVerschleissteilForm(neu);
+    showToast('Teil getauscht. Neues Teil zum Bearbeiten geöffnet.');
+  } catch (err) {
+    showToast('Fehler beim Tauschen: ' + err.message, 'error');
+  }
+}
+
+function showTauschenGrundDialog() {
+  return new Promise(resolve => {
+    const overlay = document.getElementById('tauschen-modal');
+    const input   = document.getElementById('tauschen-grund-input');
+    const okBtn   = document.getElementById('tauschen-ok');
+    const cancel  = document.getElementById('tauschen-cancel');
+
+    input.value = '';
+    overlay.hidden = false;
+    setTimeout(() => input.focus(), 50);
+
+    const cleanup = () => {
+      overlay.hidden = true;
+      okBtn.removeEventListener('click', onOk);
+      cancel.removeEventListener('click', onCancel);
+    };
+    const onOk     = () => { const v = input.value.trim(); cleanup(); resolve(v); };
+    const onCancel = () => { cleanup(); resolve(null); };
+
+    okBtn.addEventListener('click', onOk);
+    cancel.addEventListener('click', onCancel);
+  });
+}
+
+// ── Bike-Schema (SVG) ──────────────────────────────────────────
+let _schemaRenderedDecor = false;
+let _schemaOrigin = 'view-home';
+
+function renderSchemaDecor() {
+  // Speichen / Tread / Cog-Zähne werden nur einmal gerendert
+  if (_schemaRenderedDecor) return;
+  const ns = 'http://www.w3.org/2000/svg';
+
+  const drawRadial = (target, cx, cy, rInner, rOuter, n, sw, color) => {
+    if (!target) return;
+    target.innerHTML = '';
+    for (let i = 0; i < n; i++) {
+      const a = (i * 360 / n) * Math.PI / 180;
+      const l = document.createElementNS(ns, 'line');
+      l.setAttribute('x1', cx + rInner * Math.cos(a));
+      l.setAttribute('y1', cy + rInner * Math.sin(a));
+      l.setAttribute('x2', cx + rOuter * Math.cos(a));
+      l.setAttribute('y2', cy + rOuter * Math.sin(a));
+      l.setAttribute('stroke', color);
+      l.setAttribute('stroke-width', sw);
+      l.setAttribute('stroke-linecap', 'round');
+      target.appendChild(l);
+    }
+  };
+
+  const inkColor = getComputedStyle(document.documentElement).getPropertyValue('--text').trim() || '#1c1c1e';
+  const paperColor = getComputedStyle(document.documentElement).getPropertyValue('--bg-card').trim() || '#fff';
+
+  // Speichen
+  document.querySelectorAll('.spokes-r').forEach(g => drawRadial(g, 240, 540, 18, 200, 14, 0.8, inkColor));
+  document.querySelectorAll('.spokes-f').forEach(g => drawRadial(g, 970, 540, 18, 200, 14, 0.8, inkColor));
+  // Reifenprofil (Tread)
+  document.querySelectorAll('.tread-r').forEach(g => drawRadial(g, 240, 540, 234, 237, 56, 1.6, paperColor));
+  document.querySelectorAll('.tread-f').forEach(g => drawRadial(g, 970, 540, 234, 237, 56, 1.6, paperColor));
+  // Kassetten- und Kettenblatt-Zähne
+  document.querySelectorAll('.cassette-teeth').forEach(g => drawRadial(g, 240, 540, 64, 67, 40, 1, inkColor));
+  document.querySelectorAll('.chainring-teeth').forEach(g => drawRadial(g, 545, 588, 62, 65, 46, 1, inkColor));
+
+  _schemaRenderedDecor = true;
+}
+
+function findKomponente(typ, position) {
+  // findet das aktive Verschleissteil zu einer SVG-Komponente
+  const pos = position ?? null;
+  return state.verschleissteile.find(v =>
+    v.status === 'aktiv' && v.typ === typ && (v.position ?? null) === pos
+  );
+}
+
+function renderBikeSchema() {
+  renderSchemaDecor();
+  // Warnklassen pro SVG-Komponente setzen
+  SVG_KOMPONENTEN.forEach(k => {
+    const el = document.getElementById(k.svgId);
+    if (!el) return;
+    el.classList.remove('warn-1', 'warn-2');
+    const vt = findKomponente(k.typ, k.position);
+    if (!vt) return;
+    const kl = getVerschleissteilWarnKlasse(vt);
+    if (kl === 'warn-level-1') el.classList.add('warn-1');
+    if (kl === 'warn-level-2') el.classList.add('warn-2');
+  });
+}
+
+function openKomponenteSheet(svgId) {
+  const k = SVG_KOMPONENTEN.find(x => x.svgId === svgId);
+  if (!k) return;
+
+  const vt = findKomponente(k.typ, k.position);
+  const sheet  = document.getElementById('komponente-sheet');
+  const title  = document.getElementById('sheet-title');
+  const sub    = document.getElementById('sheet-sub');
+  const kmEl   = document.getElementById('sheet-km');
+  const empty  = document.getElementById('sheet-empty');
+  const actions = document.getElementById('sheet-actions');
+
+  title.textContent = k.label;
+  actions.innerHTML = '';
+
+  if (vt) {
+    sub.textContent = vt.bezeichnung || `${TYP_LABEL[vt.typ] || vt.typ}${vt.position ? ' · ' + vt.position : ''}`;
+    kmEl.textContent = formatVerschleissteilKm(vt);
+    kmEl.className = 'sheet-km ' + (getVerschleissteilWarnKlasse(vt) || '');
+    kmEl.hidden = false;
+    empty.hidden = true;
+
+    const detailBtn = document.createElement('button');
+    detailBtn.className = 'btn btn-primary';
+    detailBtn.textContent = 'Details';
+    detailBtn.addEventListener('click', () => {
+      sheet.hidden = true;
+      openVerschleissteilForm(vt);
+    });
+    actions.appendChild(detailBtn);
+  } else {
+    sub.textContent = `${TYP_LABEL[k.typ] || k.typ}${k.position ? ' · ' + k.position : ''}`;
+    kmEl.hidden = true;
+    empty.hidden = false;
+
+    const newBtn = document.createElement('button');
+    newBtn.className = 'btn btn-primary';
+    newBtn.textContent = 'Jetzt anlegen';
+    newBtn.addEventListener('click', () => {
+      sheet.hidden = true;
+      openVerschleissteilForm();
+      // Typ + Position vorbelegen
+      document.getElementById('vt-typ').value = k.typ;
+      document.getElementById('vt-position').value = k.position || '';
+      // Default-km nachziehen
+      const def = getDefaultErwarteteKm(k.typ);
+      if (def != null) document.getElementById('vt-erwarteteKm').value = def;
+    });
+    actions.appendChild(newBtn);
+  }
+
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'btn btn-secondary';
+  closeBtn.textContent = 'Schließen';
+  closeBtn.addEventListener('click', () => { sheet.hidden = true; });
+  actions.appendChild(closeBtn);
+
+  sheet.hidden = false;
 }
 
 // ── Export ─────────────────────────────────────────────────────
@@ -999,13 +1943,16 @@ async function importData(file) {
     return;
   }
 
+  // Migration für v1-Daten
+  const importedState = parsed.schemaVersion < 2 ? migrateState(parsed) : parsed;
+
   const ok = await showConfirm(
     'Daten importieren?',
-    `${parsed.fahrten.length} Fahrten werden geladen. Die aktuellen Daten auf diesem Gerät werden überschrieben.`
+    `${importedState.fahrten.length} Fahrten werden geladen. Die aktuellen Daten auf diesem Gerät werden überschrieben.`
   );
   if (!ok) return;
 
-  state = parsed;
+  state = importedState;
   try {
     await dbSave(state);
     renderHome();
@@ -1023,6 +1970,7 @@ async function finishOnboarding(e) {
   state = emptyState();
   state.bike.name         = document.getElementById('ob-name').value.trim();
   state.bike.rahmennummer = document.getElementById('ob-rahmennummer').value.trim();
+  state.meta.appVersion   = APP_VERSION;
   try {
     await dbSave(state);
     renderHome();
@@ -1040,6 +1988,7 @@ function bindEvents() {
   // Home nav
   document.getElementById('btn-neue-fahrt').addEventListener('click', () => openFahrtForm());
   document.getElementById('btn-goto-bike').addEventListener('click', () => { renderBike(); showView('view-bike'); });
+  document.getElementById('btn-goto-schema').addEventListener('click', () => { _schemaOrigin = 'view-home'; renderBikeSchema(); showView('view-bike-schema'); });
   document.getElementById('btn-goto-settings').addEventListener('click', () => { renderSettings(); showView('view-settings'); });
   document.getElementById('banner-export-btn').addEventListener('click', exportData);
   document.getElementById('banner-close-btn').addEventListener('click', () => {
@@ -1054,6 +2003,7 @@ function bindEvents() {
   // Bike profile
   document.getElementById('bike-form').addEventListener('submit', saveBike);
   document.getElementById('btn-bike-back').addEventListener('click', () => showView('view-home'));
+  document.getElementById('btn-verschleissteile').addEventListener('click', () => { renderVerschleissteile(); showView('view-verschleissteile'); });
 
   const photoArea  = document.getElementById('photo-area');
   const fotoInput  = document.getElementById('bike-foto-input');
@@ -1082,6 +2032,52 @@ function bindEvents() {
     if (!file) return;
     await importData(file);
     importInput.value = '';
+  });
+
+  // Verschleissteile Liste
+  document.getElementById('btn-verschleissteile-back').addEventListener('click', () => { renderBike(); showView('view-bike'); });
+  document.getElementById('btn-neues-verschleissteil').addEventListener('click', () => openVerschleissteilForm());
+  
+  // Click-Handler für Verschleissteil-Items (Event Delegation)
+  document.getElementById('verschleissteile-list').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-id]');
+    if (btn) {
+      const id = btn.dataset.id;
+      const vt = state.verschleissteile.find(v => v.id === id);
+      if (vt) openVerschleissteilForm(vt);
+    }
+  });
+
+  // Verschleissteil Formular
+  document.getElementById('btn-verschleissteil-form-back').addEventListener('click', () => { renderVerschleissteile(); showView('view-verschleissteile'); });
+  document.getElementById('verschleissteil-form').addEventListener('submit', saveVerschleissteil);
+  document.getElementById('vt-delete-btn').addEventListener('click', deleteVerschleissteil);
+  document.getElementById('vt-tauschen-btn').addEventListener('click', tauscheVerschleissteilHandler);
+
+  // Live-Default für erwarteteKm beim Typ-Wechsel (nur wenn Feld leer ist)
+  document.getElementById('vt-typ').addEventListener('change', (e) => {
+    const kmField = document.getElementById('vt-erwarteteKm');
+    if (kmField.value) return;
+    const def = getDefaultErwarteteKm(e.target.value);
+    if (def != null) kmField.value = def;
+  });
+
+  // Bike-Schema-View
+  document.getElementById('btn-bike-schema').addEventListener('click', () => { _schemaOrigin = 'view-bike'; renderBikeSchema(); showView('view-bike-schema'); });
+  document.getElementById('btn-bike-schema-back').addEventListener('click', () => showView(_schemaOrigin || 'view-home'));
+
+  // Tap-Handler für interaktive SVG-Komponenten
+  document.querySelectorAll('.schema-svg .hot').forEach(g => {
+    const fire = () => openKomponenteSheet(g.id);
+    g.addEventListener('click', fire);
+    g.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fire(); }
+    });
+  });
+
+  // Sheet schließen wenn auf Overlay (außerhalb der Sheet-Box) getippt
+  document.getElementById('komponente-sheet').addEventListener('click', (e) => {
+    if (e.target.id === 'komponente-sheet') e.currentTarget.hidden = true;
   });
 }
 

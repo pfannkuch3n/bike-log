@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Gravel Bike — Seitenansicht</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Serif:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#ece6d8;
+    --paper-2:#e6dfcd;
+    --ink:#1a1714;
+    --ink-soft:#6b6258;
+    --ink-line:#221e19;
+    --accent:#b8462a;
+    --sw:1;
+  }
+  /* theme: white */
+  body.theme-white{ --paper:#f7f5ef; --ink:#181513; --ink-soft:#6c655c; --ink-line:#181513; }
+  /* theme: blueprint */
+  body.theme-blue{ --paper:#13344f; --ink:#eef3f8; --ink-soft:#a9c2da; --ink-line:#e6eff8; --accent:#ffb04a; }
+  body.theme-blue{ background-image:
+      radial-gradient(circle at 1px 1px, rgba(238,243,248,.10) 1px, transparent 0),
+      linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(255,255,255,.04) 100%); }
+
+  /* tire style: outline (toggle) */
+  body.tires-outline #mantel-vorne .part.ink-fill,
+  body.tires-outline #mantel-hinten .part.ink-fill{
+    fill:none;stroke:var(--ink-line);stroke-width:calc(2.2 * var(--sw,1));
+  }
+
+  body.no-hud .label{display:none}
+  body.no-ruler .ticks{visibility:hidden}
+  body.no-ruler .corner{display:none}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    min-height:100vh;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Mono',ui-monospace,monospace;
+    font-size:13px;
+    line-height:1.45;
+    padding:36px 28px 56px;
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(26,23,20,.07) 1px, transparent 0),
+      linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(26,23,20,.025) 100%);
+    background-size:22px 22px, 100% 100%;
+  }
+  .sheet{
+    width:min(1280px,100%);
+    margin:0 auto;
+  }
+  header{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    border-bottom:1px solid var(--ink-line);
+    padding-bottom:10px;
+    margin-bottom:6px;
+    gap:24px;
+  }
+  .lockup{display:flex;flex-direction:column;gap:2px}
+  .eyebrow{
+    font-size:10.5px;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+  }
+  h1{
+    font-family:'IBM Plex Serif',serif;
+    font-weight:500;
+    font-size:26px;
+    margin:0;
+    letter-spacing:-.005em;
+  }
+  .meta{
+    font-size:10.5px;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    text-align:right;
+    white-space:pre;
+  }
+  .ticks{
+    display:flex;justify-content:space-between;
+    font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--ink-soft);
+    margin:6px 2px 0;
+  }
+  .ticks span{position:relative;padding-top:8px}
+  .ticks span::before{
+    content:"";position:absolute;top:0;left:50%;width:1px;height:5px;background:var(--ink-line);
+  }
+  .canvas-wrap{
+    margin-top:10px;
+    position:relative;
+  }
+  .bike{width:100%;height:auto;display:block;overflow:visible}
+  .corner{position:absolute;font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-soft)}
+  .corner.tl{top:0;left:0}
+  .corner.tr{top:0;right:0}
+  .corner.bl{bottom:-2px;left:0}
+  .corner.br{bottom:-2px;right:0}
+
+  .legend{
+    margin-top:22px;
+    border-top:1px solid var(--ink-line);
+    padding-top:14px;
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:8px 28px;
+    font-size:11.5px;
+    color:var(--ink-soft);
+  }
+  .legend .num{
+    display:inline-block;width:22px;color:var(--ink);font-weight:500;
+  }
+  .legend .name{color:var(--ink)}
+  footer{
+    margin-top:22px;
+    display:flex;justify-content:space-between;align-items:baseline;
+    font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft);
+  }
+  footer .tag{padding:3px 7px;border:1px solid var(--ink-line);color:var(--ink);border-radius:2px}
+
+  /* Bike line styles */
+  .frame-tube{fill:none;stroke:var(--ink-line);stroke-width:10;stroke-linecap:round;stroke-linejoin:round}
+  .fork{fill:none;stroke:var(--ink-line);stroke-width:9;stroke-linecap:round;stroke-linejoin:round}
+  .stay{fill:none;stroke:var(--ink-line);stroke-width:7;stroke-linecap:round;stroke-linejoin:round}
+  .bar{fill:none;stroke:var(--ink-line);stroke-width:8;stroke-linecap:round;stroke-linejoin:round}
+  .bar-thick{stroke-width:14}
+  .detail{fill:none;stroke:var(--ink-line);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+  .thin{fill:none;stroke:var(--ink-line);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+  /* line-weight tweak: applied via root data-attr to scale */
+  body[data-w="0.6"] .frame-tube{stroke-width:6}body[data-w="0.6"] .fork{stroke-width:5.4}body[data-w="0.6"] .stay{stroke-width:4.2}body[data-w="0.6"] .bar{stroke-width:4.8}body[data-w="0.6"] .bar-thick{stroke-width:8.4}body[data-w="0.6"] .detail{stroke-width:1.8}
+  body[data-w="0.8"] .frame-tube{stroke-width:8}body[data-w="0.8"] .fork{stroke-width:7.2}body[data-w="0.8"] .stay{stroke-width:5.6}body[data-w="0.8"] .bar{stroke-width:6.4}body[data-w="0.8"] .bar-thick{stroke-width:11.2}body[data-w="0.8"] .detail{stroke-width:2.4}
+  body[data-w="1.2"] .frame-tube{stroke-width:12}body[data-w="1.2"] .fork{stroke-width:10.8}body[data-w="1.2"] .stay{stroke-width:8.4}body[data-w="1.2"] .bar{stroke-width:9.6}body[data-w="1.2"] .bar-thick{stroke-width:16.8}body[data-w="1.2"] .detail{stroke-width:3.6}
+  body[data-w="1.5"] .frame-tube{stroke-width:15}body[data-w="1.5"] .fork{stroke-width:13.5}body[data-w="1.5"] .stay{stroke-width:10.5}body[data-w="1.5"] .bar{stroke-width:12}body[data-w="1.5"] .bar-thick{stroke-width:21}body[data-w="1.5"] .detail{stroke-width:4.5}
+
+  /* ----- per-component color overrides ----- */
+  #rahmen .frame-tube, #rahmen .stay, #rahmen .bar{stroke:var(--col-frame, var(--ink-line))}
+  #rahmen .ink-fill{fill:var(--col-frame, var(--ink-line))}
+  #gabel .fork{stroke:var(--col-frame, var(--ink-line))}
+  #gabel .ink-fill{fill:var(--col-frame, var(--ink-line))}
+
+  #mantel-vorne .part.ink-fill, #mantel-hinten .part.ink-fill{fill:var(--col-tire, var(--ink-line))}
+  body.tires-outline #mantel-vorne .part.ink-fill,
+  body.tires-outline #mantel-hinten .part.ink-fill{
+    fill:none;stroke:var(--col-tire, var(--ink-line))
+  }
+  /* spokes & rims follow frame color */
+  #laufrad-vorne .detail, #laufrad-hinten .detail{stroke:var(--col-frame, var(--ink-line))}
+  #laufrad-vorne .ink-fill, #laufrad-hinten .ink-fill{fill:var(--col-frame, var(--ink-line))}
+  #spokes-f line, #spokes-r line{stroke:var(--col-frame, var(--ink-line)) !important}
+
+  #kette .part.detail{stroke:var(--col-drive, var(--ink-line))}
+  #kassette .part.detail, #kassette .part.thin{stroke:var(--col-drive, var(--ink-line))}
+  #cassette-teeth line, #chainring-teeth line{stroke:var(--col-drive, var(--ink-line)) !important}
+  #kurbel .part.detail, #kurbel .part.thin{stroke:var(--col-drive, var(--ink-line))}
+  #kurbel .part.ink-fill{fill:var(--col-drive, var(--ink-line))}
+  #schaltwerk .part.detail, #schaltwerk .part.thin{stroke:var(--col-drive, var(--ink-line))}
+  #schaltwerk .part.ink-fill{fill:var(--col-drive, var(--ink-line))}
+
+  #bremse-vorne .part.thin, #bremse-hinten .part.thin{stroke:var(--col-brake, var(--ink-line))}
+  #bremse-vorne .part.ink-fill, #bremse-hinten .part.ink-fill{fill:var(--col-brake, var(--ink-line))}
+
+  #cockpit .bar{stroke:var(--col-bar, var(--ink-line))}
+  #cockpit .ink-fill{fill:var(--col-bar, var(--ink-line))}
+
+  #sattel .ink-fill{fill:var(--col-saddle, var(--ink-line))}
+  .hair{fill:none;stroke:var(--ink-line);stroke-width:.75;stroke-linecap:round}
+  .ink-fill{fill:var(--ink-line);stroke:none}
+  .paper-fill{fill:var(--paper);stroke:var(--ink-line);stroke-width:1.4}
+  /* hotspots & states */
+  .hot{cursor:pointer;outline:none}
+  .hot .hit{fill:transparent;pointer-events:all}
+  .hot .part{transition:stroke 140ms ease, fill 140ms ease}
+  .hot:hover .part:not(.ink-fill){stroke:var(--accent)}
+  .hot:hover .part.ink-fill{fill:var(--accent)}
+  .hot:focus-visible .part:not(.ink-fill){stroke:var(--accent)}
+  .hot:focus-visible .part.ink-fill{fill:var(--accent)}
+  .hot:hover .label{opacity:1;transform:translateY(0)}
+
+  /* hover label */
+  .label{
+    pointer-events:none;
+    opacity:0;
+    transform:translateY(3px);
+    transition:opacity 120ms ease, transform 120ms ease;
+  }
+  .label rect{fill:var(--accent);stroke:none}
+  .label text{
+    fill:var(--paper);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    dominant-baseline:middle;
+  }
+
+  /* toast */
+  .toast{
+    position:fixed;left:50%;bottom:32px;transform:translate(-50%,12px);
+    background:var(--ink-line);color:var(--paper);
+    padding:10px 18px;border-radius:2px;
+    font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.04em;
+    opacity:0;pointer-events:none;
+    transition:opacity 160ms ease, transform 160ms ease;
+    z-index:50;
+  }
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+  .toast b{color:var(--accent);font-weight:500;margin-right:8px;letter-spacing:.1em;text-transform:uppercase}
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <header>
+    <div class="lockup">
+      <div class="eyebrow">Fig. 01 — Drive-side schematic</div>
+      <h1>Gravel Bike <span style="color:var(--ink-soft);font-family:'IBM Plex Mono';font-size:14px;letter-spacing:.05em">/ Seitenansicht</span></h1>
+    </div>
+    <div class="meta">700c · 40 mm
+Wheelbase 1063 mm
+ST 73°  ·  HT 71°</div>
+  </header>
+
+  <div class="canvas-wrap">
+    <span class="corner tl">A</span>
+    <span class="corner tr">B</span>
+    <span class="corner bl">D</span>
+    <span class="corner br">C</span>
+
+    <svg class="bike" viewBox="0 0 1200 900" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Gravel bike, side view, drive side">
+      <!-- =========================================================
+           COORDINATES (computed)
+           Rear axle  RA = (240, 540)   wheel R = 240
+           Front axle FA = (970, 540)   wheelbase = 700
+           BB         = (545, 588)      chainstay 290, drop 48
+           ST top     = (415, 225)      seat tube length 380, 73°
+           Saddle clamp= (374,  91)
+           Fork crown = (852, 285)
+           HT top     = (818, 186)      head tube 105, 71°
+           Bar clamp  = (891, 165)
+           Ground line y = 780
+      ============================================================ -->
+
+      <!-- ground reference -->
+      <g class="thin" opacity=".55">
+        <line x1="40" y1="780" x2="1160" y2="780" stroke-dasharray="2 7"/>
+        <line x1="40" y1="780" x2="46" y2="780"/>
+        <line x1="1154" y1="780" x2="1160" y2="780"/>
+      </g>
+      <!-- wheelbase dimension -->
+      <g class="thin" opacity=".55">
+        <line x1="240" y1="820" x2="970" y2="820"/>
+        <line x1="240" y1="812" x2="240" y2="828"/>
+        <line x1="970" y1="812" x2="970" y2="828"/>
+      </g>
+      <text x="605" y="844" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10.5" letter-spacing="0.14em" style="fill:var(--ink-soft)">1063 MM</text>
+
+      <!-- =====================================================
+           FRAME (drawn first so wheels & components sit over it)
+      ===================================================== -->
+      <g id="rahmen">
+        <!-- top tube -->
+        <line class="frame-tube" x1="818" y1="186" x2="415" y2="225"/>
+        <!-- down tube -->
+        <line class="frame-tube" x1="852" y1="285" x2="545" y2="588"/>
+        <!-- seat tube: BB up to top tube junction -->
+        <line class="frame-tube" x1="545" y1="588" x2="415" y2="225"/>
+        <!-- seat post: from junction up to saddle base -->
+        <line class="bar" x1="415" y1="225" x2="378" y2="100"/>
+        <!-- seat clamp -->
+        <circle class="ink-fill" cx="415" cy="225" r="8"/>
+        <!-- head tube (extra fat) -->
+        <line class="frame-tube" x1="852" y1="285" x2="811" y2="167" stroke-width="14"/>
+        <!-- chainstay -->
+        <line class="stay" x1="545" y1="588" x2="240" y2="540"/>
+        <!-- seatstay -->
+        <line class="stay" x1="240" y1="540" x2="415" y2="225"/>
+        <!-- junction clusters -->
+        <circle class="ink-fill" cx="415" cy="225" r="3.2"/>
+        <circle class="ink-fill" cx="818" cy="186" r="3.2"/>
+        <circle class="ink-fill" cx="545" cy="588" r="3.5"/>
+      </g>
+
+      <!-- =====================================================
+           FORK
+      ===================================================== -->
+      <g id="gabel">
+        <!-- crown / fork blade -->
+        <line class="fork" x1="852" y1="285" x2="970" y2="540"/>
+        <!-- small crown detail -->
+        <circle class="ink-fill" cx="852" cy="285" r="3"/>
+      </g>
+
+      <!-- =====================================================
+           SADDLE
+      ===================================================== -->
+      <g id="sattel">
+        <!-- saddle base sitting on top of seat post (378,100) -->
+        <path class="ink-fill" d="
+          M 295 90
+          Q 365 78, 418 82
+          Q 472 86, 488 100
+          L 488 108
+          Q 472 106, 418 106
+          Q 350 106, 295 100
+          Z"/>
+        <!-- nose tip -->
+        <path class="ink-fill" d="M 278 96 L 298 92 L 298 100 L 282 104 Z"/>
+      </g>
+
+      <!-- =====================================================
+           STEM + DROP BAR
+      ===================================================== -->
+      <g id="cockpit">
+        <!-- stem -->
+        <line class="bar" x1="811" y1="167" x2="891" y2="165"/>
+        <!-- stem face plate -->
+        <circle class="ink-fill" cx="891" cy="165" r="7"/>
+        <!-- drop bar: one fat curved line (no inner detail) -->
+        <path class="bar bar-thick" d="
+          M 891 165
+          C 944 158, 1000 174, 1014 214
+          C 1024 254, 998 282, 958 280
+          C 928 278, 906 264, 894 252
+        " fill="none"/>
+      </g>
+
+      <!-- =====================================================
+           WHEELS  (rear + front)
+      ===================================================== -->
+      <!-- REAR WHEEL -->
+      <g id="laufrad-hinten">
+        <g id="spokes-r"></g>
+        <!-- rim outer line -->
+        <circle class="detail" cx="240" cy="540" r="206"/>
+        <circle class="detail" cx="240" cy="540" r="200" stroke-width="1.2"/>
+        <!-- hub flange -->
+        <circle class="paper-fill" cx="240" cy="540" r="22"/>
+        <circle class="ink-fill" cx="240" cy="540" r="6"/>
+      </g>
+
+      <!-- FRONT WHEEL -->
+      <g id="laufrad-vorne">
+        <g id="spokes-f"></g>
+        <circle class="detail" cx="970" cy="540" r="206"/>
+        <circle class="detail" cx="970" cy="540" r="200" stroke-width="1.2"/>
+        <circle class="paper-fill" cx="970" cy="540" r="22"/>
+        <circle class="ink-fill" cx="970" cy="540" r="6"/>
+      </g>
+
+      <!-- =====================================================
+           TIRES (mantel) — drawn as ring shapes, INTERACTIVE
+      ===================================================== -->
+      <g id="mantel-hinten" class="hot" tabindex="0" role="button" aria-label="Reifen hinten">
+        <!-- tire body: outer circle minus rim outer -->
+        <path class="part ink-fill" fill-rule="evenodd"
+              d="M 240 540 m -240 0 a 240 240 0 1 0 480 0 a 240 240 0 1 0 -480 0
+                 M 240 540 m -206 0 a 206 206 0 1 0 412 0 a 206 206 0 1 0 -412 0"/>
+        <!-- tread tick pattern -->
+        <g id="tread-r"></g>
+        <!-- hover label -->
+        <g class="label" transform="translate(240,250)">
+          <rect x="-66" y="-13" width="132" height="22" rx="2"/>
+          <text x="0" y="0" text-anchor="middle">MANTEL HINTEN</text>
+        </g>
+        <!-- hotspot -->
+        <rect class="hit" x="60" y="320" width="360" height="60"/>
+        <rect class="hit" x="60" y="700" width="360" height="60"/>
+      </g>
+
+      <g id="mantel-vorne" class="hot" tabindex="0" role="button" aria-label="Reifen vorne">
+        <path class="part ink-fill" fill-rule="evenodd"
+              d="M 970 540 m -240 0 a 240 240 0 1 0 480 0 a 240 240 0 1 0 -480 0
+                 M 970 540 m -206 0 a 206 206 0 1 0 412 0 a 206 206 0 1 0 -412 0"/>
+        <g id="tread-f"></g>
+        <g class="label" transform="translate(970,250)">
+          <rect x="-60" y="-13" width="120" height="22" rx="2"/>
+          <text x="0" y="0" text-anchor="middle">MANTEL VORNE</text>
+        </g>
+        <rect class="hit" x="790" y="320" width="360" height="60"/>
+        <rect class="hit" x="790" y="700" width="360" height="60"/>
+      </g>
+
+      <!-- =====================================================
+           DISC BRAKES (rotors + calipers) — INTERACTIVE
+      ===================================================== -->
+      <g id="bremse-vorne" class="hot" tabindex="0" role="button" aria-label="Bremse vorne">
+        <!-- rotor (far side, dashed) -->
+        <circle class="part thin" cx="970" cy="540" r="80" stroke-dasharray="2 3" opacity=".7"/>
+        <circle class="part thin" cx="970" cy="540" r="58" stroke-dasharray="1 4" opacity=".55"/>
+        <!-- caliper -->
+        <rect class="part ink-fill" x="936" y="468" width="22" height="34" rx="2"/>
+        <rect class="part thin" x="942" y="473" width="10" height="24" style="fill:var(--paper);stroke:var(--ink-line);stroke-width:1"/>
+        <!-- mount bolts -->
+        <circle class="part ink-fill" cx="942" cy="466" r="1.7"/>
+        <circle class="part ink-fill" cx="952" cy="466" r="1.7"/>
+        <g class="label" transform="translate(950,440)">
+          <rect x="-58" y="-13" width="116" height="22" rx="2"/>
+          <text x="0" y="0" text-anchor="middle">BREMSE VORNE</text>
+        </g>
+        <rect class="hit" x="910" y="448" width="72" height="72"/>
+      </g>
+
+        <!-- hose hint up the seatstay -->
+        <path class="part thin" stroke-dasharray="3 2" opacity=".6" d="M 268 502 Q 290 460 320 380"/>
+        <g class="label" transform="translate(350,486)">
+          <rect x="-62" y="-13" width="124" height="22" rx="2"/>
+          <text x="0" y="0" text-anchor="middle">BREMSE HINTEN</text>
+        </g>
+        <rect class="hit" x="240" y="478" width="66" height="66"/>
+      </g>
+
+      <!-- =====================================================
+           CASSETTE — INTERACTIVE
+      ===================================================== -->
+      <g id="kassette" class="hot" tabindex="0" role="button" aria-label="Kassette">
+        <!-- stack of cogs: rings -->
+        <circle class="part detail" cx="240" cy="540" r="64"/>
+        <circle class="part thin" cx="240" cy="540" r="56"/>
+        <circle class="part thin" cx="240" cy="540" r="48"/>
+        <circle class="part thin" cx="240" cy="540" r="40"/>
+        <circle class="part thin" cx="240" cy="540" r="32"/>
+        <!-- teeth ticks on largest cog -->
+        <g id="cassette-teeth"></g>
+        <g class="label" transform="translate(140,608)">
+          <rect x="-44" y="-13" width="88" height="22" rx="2"/>
+          <text x="0" y="0" text-anchor="middle">KASSETTE</text>
+        </g>
+        <rect class="hit" x="180" y="478" width="124" height="124"/>
+      </g>
+
+      <!-- =====================================================
+           CHAIN — INTERACTIVE
+      ===================================================== -->
+      <g id="kette" class="hot" tabindex="0" role="button" aria-label="Kette">
+        <!-- upper run -->
+        <line class="part detail" stroke-width="4" x1="240" y1="476" x2="545" y2="525"/>
+        <!-- lower run through derailleur cage back to cassette -->
+        <path class="part detail" stroke-width="4" fill="none"
+              d="M 545 651
+                 L 290 642
+                 Q 268 642 262 630
+                 L 256 612
+                 Q 252 600 244 604
+                 L 222 614"/>
+        <g class="label" transform="translate(380,452)">
+          <rect x="-32" y="-13" width="64" height="22" rx="2"/>
+          <text x="0" y="0" text-anchor="middle">KETTE</text>
+        </g>
+        <rect class="hit" x="260" y="450" width="280" height="64"/>
+      </g>
+
+      <!-- =====================================================
+           REAR DERAILLEUR — INTERACTIVE
+      ===================================================== -->
+      <g id="schaltwerk" class="hot" tabindex="0" role="button" aria-label="Schaltwerk">
+        <!-- hanger arm from dropout down -->
+        <line class="part detail" stroke-width="2.6" x1="240" y1="558" x2="256" y2="590"/>
+        <!-- parallelogram body -->
+        <path class="part ink-fill" d="M 252 588 L 286 596 L 280 614 L 246 606 Z"/>
+        <!-- cage -->
+        <path class="part detail" stroke-width="2" fill="none" d="M 268 612 L 268 632 L 248 642 L 242 624 Z"/>
+        <!-- upper jockey -->
+        <circle class="part paper-fill" cx="262" cy="616" r="7"/>
+        <circle class="part ink-fill" cx="262" cy="616" r="1.8"/>
+        <!-- lower jockey -->
+        <circle class="part paper-fill" cx="245" cy="638" r="7"/>
+        <circle class="part ink-fill" cx="245" cy="638" r="1.8"/>
+        <g class="label" transform="translate(310,650)">
+          <rect x="-52" y="-13" width="104" height="22" rx="2"/>
+          <text x="0" y="0" text-anchor="middle">SCHALTWERK</text>
+        </g>
+      <g id="bremse-hinten" class="hot" tabindex="0" role="button" aria-label="Bremse hinten">
+        <!-- rotor on far side (dashed) -->
+        <circle class="part thin" cx="240" cy="540" r="86" stroke-dasharray="2 3" opacity=".75"/>
+        <circle class="part thin" cx="240" cy="540" r="62" stroke-dasharray="1 4" opacity=".55"/>
+        <!-- flat-mount caliper near rear dropout, on chainstay top (peeking from far side) -->
+        <g transform="rotate(9 268 510)">
+          <rect class="part ink-fill" x="252" y="492" width="36" height="22" rx="2"/>
+          <rect class="part thin" x="258" y="497" width="24" height="12" style="fill:var(--paper);stroke:var(--ink-line);stroke-width:1"/>
+          <circle class="part ink-fill" cx="260" cy="490" r="1.6"/>
+          <circle class="part ink-fill" cx="280" cy="490" r="1.6"/>
+        </g>
+        <rect class="hit" x="230" y="582" width="68" height="74"/>
+      </g>
+
+      <!-- =====================================================
+           CRANK + CHAINRING — INTERACTIVE
+      ===================================================== -->
+      <g id="kurbel" class="hot" tabindex="0" role="button" aria-label="Kurbel">
+        <!-- chainring -->
+        <circle class="part detail" stroke-width="3.5" cx="545" cy="588" r="62"/>
+        <circle class="part thin" cx="545" cy="588" r="54"/>
+        <g id="chainring-teeth"></g>
+        <!-- spider arms -->
+        <line class="part thin" x1="545" y1="588" x2="545" y2="538"/>
+        <line class="part thin" x1="545" y1="588" x2="595" y2="588"/>
+        <line class="part thin" x1="545" y1="588" x2="545" y2="638"/>
+        <line class="part thin" x1="545" y1="588" x2="495" y2="588"/>
+        <!-- crank arm forward-down (~5 o'clock) -->
+        <path class="part ink-fill" d="
+          M 531 602 L 631 686 L 643 700 L 631 712 L 519 618
+          Z"/>
+        <!-- pedal spindle -->
+        <rect class="part ink-fill" x="631" y="696" width="28" height="8" rx="1.5"/>
+        <!-- pedal body -->
+        <rect class="part detail" stroke-width="3" x="639" y="684" width="58" height="32" rx="3" style="fill:var(--paper)"/>
+        <line class="part thin" x1="649" y1="694" x2="689" y2="694"/>
+        <line class="part thin" x1="649" y1="706" x2="689" y2="706"/>
+        <!-- bb shell -->
+        <circle class="part paper-fill" cx="545" cy="588" r="14"/>
+        <circle class="part ink-fill" cx="545" cy="588" r="4"/>
+        <g class="label" transform="translate(639,742)">
+          <rect x="-38" y="-13" width="76" height="22" rx="2"/>
+          <text x="0" y="0" text-anchor="middle">KURBEL</text>
+        </g>
+        <rect class="hit" x="466" y="545" width="220" height="200"/>
+      </g>
+
+    </svg>
+  </div>
+
+  <div class="ticks">
+    <span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span>
+  </div>
+
+  <div class="legend" id="legend"></div>
+
+  <footer>
+    <span>Schematic — interaktiv, tap auf eine Komponente</span>
+    <span class="tag">v0.1</span>
+  </footer>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"><b></b><span></span></div>
+
+<div id="tweaks-root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+
+<script>
+/* ---------- Spokes ---------- */
+function spokes(targetId, cx, cy, rInner, rOuter, n, offset){
+  const g = document.getElementById(targetId);
+  if(!g) return;
+  g.innerHTML = "";
+  const ns = "http://www.w3.org/2000/svg";
+  for(let i=0;i<n;i++){
+    const a = ((i*360/n)+(offset||0)) * Math.PI/180;
+    const l = document.createElementNS(ns,"line");
+    l.setAttribute("x1", cx + rInner*Math.cos(a));
+    l.setAttribute("y1", cy + rInner*Math.sin(a));
+    l.setAttribute("x2", cx + rOuter*Math.cos(a));
+    l.setAttribute("y2", cy + rOuter*Math.sin(a));
+    l.setAttribute("style","stroke:var(--ink-line);stroke-width:calc(0.8 * var(--sw,1));stroke-linecap:round");
+    g.appendChild(l);
+  }
+}
+window.__renderSpokes = (count) => {
+  spokes("spokes-r",240,540,18,200,count,8);
+  spokes("spokes-f",970,540,18,200,count,8);
+};
+window.__renderSpokes(14);
+
+/* ---------- Tread ticks ---------- */
+function tread(targetId, cx, cy, r, n){
+  const g = document.getElementById(targetId);
+  if(!g) return;
+  g.innerHTML = "";
+  const ns = "http://www.w3.org/2000/svg";
+  for(let i=0;i<n;i++){
+    const a = (i*360/n) * Math.PI/180;
+    const x1 = cx + (r-4)*Math.cos(a);
+    const y1 = cy + (r-4)*Math.sin(a);
+    const x2 = cx + (r-1)*Math.cos(a);
+    const y2 = cy + (r-1)*Math.sin(a);
+    const l = document.createElementNS(ns,"line");
+    l.setAttribute("x1",x1);l.setAttribute("y1",y1);
+    l.setAttribute("x2",x2);l.setAttribute("y2",y2);
+    l.setAttribute("style","stroke:var(--paper);stroke-width:1.6;stroke-linecap:round");
+    g.appendChild(l);
+  }
+}
+window.__renderTread = () => {
+  tread("tread-r",240,540,238,56);
+  tread("tread-f",970,540,238,56);
+};
+window.__renderTread();
+
+/* ---------- Cassette + chainring teeth (visible "cog" rhythm) ---------- */
+function teeth(targetId, cx, cy, r, n, len, sw){
+  const g = document.getElementById(targetId);
+  if(!g) return;
+  g.innerHTML = "";
+  const ns = "http://www.w3.org/2000/svg";
+  for(let i=0;i<n;i++){
+    const a = (i*360/n) * Math.PI/180;
+    const x1 = cx + r*Math.cos(a);
+    const y1 = cy + r*Math.sin(a);
+    const x2 = cx + (r+len)*Math.cos(a);
+    const y2 = cy + (r+len)*Math.sin(a);
+    const l = document.createElementNS(ns,"line");
+    l.setAttribute("x1",x1);l.setAttribute("y1",y1);
+    l.setAttribute("x2",x2);l.setAttribute("y2",y2);
+    l.setAttribute("style",`stroke:var(--ink-line);stroke-width:${sw};stroke-linecap:round`);
+    g.appendChild(l);
+  }
+}
+teeth("cassette-teeth",240,540,64,40,3,1);
+teeth("chainring-teeth",545,588,62,46,3,1);
+
+/* ---------- Legend ---------- */
+const PARTS = [
+  ["01","mantel-vorne","Reifen vorne"],
+  ["02","mantel-hinten","Reifen hinten"],
+  ["03","kette","Kette"],
+  ["04","kassette","Kassette"],
+  ["05","kurbel","Kurbel + Kettenblatt"],
+  ["06","schaltwerk","Schaltwerk"],
+  ["07","bremse-vorne","Bremse vorne"],
+  ["08","bremse-hinten","Bremse hinten"]
+];
+const lg = document.getElementById("legend");
+PARTS.forEach(([num,id,label])=>{
+  const div = document.createElement("div");
+  div.innerHTML = `<span class="num">${num}</span><span class="name">${label}</span>`;
+  div.dataset.id = id;
+  div.style.cursor = "pointer";
+  div.addEventListener("mouseenter",()=>{
+    const el = document.getElementById(id);
+    if(el){ el.dispatchEvent(new Event('mouseover',{bubbles:true})); el.classList.add('forced'); el.style.setProperty('--a','1'); }
+  });
+  div.addEventListener("click",()=> fireTap(id));
+  lg.appendChild(div);
+});
+
+/* ---------- Tap handler ---------- */
+const toast = document.getElementById("toast");
+const toastTag = toast.querySelector("b");
+const toastTxt = toast.querySelector("span");
+let toastT;
+function fireTap(id){
+  const label = (PARTS.find(p=>p[1]===id)||[,,id])[2];
+  toastTag.textContent = id;
+  toastTxt.textContent = "angetippt — " + label;
+  toast.classList.add("show");
+  clearTimeout(toastT);
+  toastT = setTimeout(()=>toast.classList.remove("show"),1800);
+  console.log("[bike]", id, "angetippt");
+}
+document.querySelectorAll(".hot").forEach(g=>{
+  g.addEventListener("click",()=> fireTap(g.id));
+  g.addEventListener("keydown",e=>{
+    if(e.key==="Enter"||e.key===" "){ e.preventDefault(); fireTap(g.id); }
+  });
+});
+</script>
+
+<script type="text/babel">
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "lineWeight": 1.8,
+  "accent": "#1f8a5b",
+  "theme": "weiß",
+  "tires": "gefüllt",
+  "spokes": 14,
+  "hudLabels": true,
+  "rulerMarks": false,
+  "colFrame": "#1f8a5b",
+  "colTire": "#6b6258",
+  "colDrive": "#b8462a",
+  "colBrake": "#e6dfcd",
+  "colBar": "#221e19",
+  "colSaddle": "#e6dfcd"
+}/*EDITMODE-END*/;
+
+const PART_PALETTE = ['#221e19','#b8462a','#1f8a5b','#2a6fdb','#c89933','#6b6258','#e6dfcd'];
+
+function applyTweaks(t){
+  // snap to nearest weight bucket
+  const w = t.lineWeight;
+  let bucket = '1';
+  if (w <= 0.65) bucket = '0.6';
+  else if (w <= 0.85) bucket = '0.8';
+  else if (w >= 1.35) bucket = '1.5';
+  else if (w >= 1.1) bucket = '1.2';
+  document.body.setAttribute('data-w', bucket);
+  const r = document.documentElement.style;
+  r.setProperty('--accent', t.accent);
+  r.setProperty('--col-frame',  t.colFrame);
+  r.setProperty('--col-tire',   t.colTire);
+  r.setProperty('--col-drive',  t.colDrive);
+  r.setProperty('--col-brake',  t.colBrake);
+  r.setProperty('--col-bar',    t.colBar);
+  r.setProperty('--col-saddle', t.colSaddle);
+  document.body.classList.remove('theme-white','theme-blue');
+  if(t.theme === 'weiß')      document.body.classList.add('theme-white');
+  if(t.theme === 'blueprint') document.body.classList.add('theme-blue');
+  document.body.classList.toggle('tires-outline', t.tires === 'kontur');
+  document.body.classList.toggle('no-hud', !t.hudLabels);
+  document.body.classList.toggle('no-ruler', !t.rulerMarks);
+  if(window.__renderSpokes) window.__renderSpokes(t.spokes);
+  if(window.__renderTread)  window.__renderTread();
+}
+
+function App(){
+  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  React.useEffect(() => { applyTweaks(t); }, [t]);
+  return (
+    <TweaksPanel title="Tweaks">
+      <TweakSection label="Linien" />
+      <TweakSlider label="Linienstärke" value={t.lineWeight} min={0.5} max={2.0} step={0.1}
+                   onChange={(v) => setTweak('lineWeight', v)} />
+      <TweakSlider label="Speichen" value={t.spokes} min={6} max={24} step={2}
+                   onChange={(v) => setTweak('spokes', v)} />
+      <TweakSection label="Farbe" />
+      <TweakRadio  label="Theme" value={t.theme} options={['papier','weiß','blueprint']}
+                   onChange={(v) => setTweak('theme', v)} />
+      <TweakColor  label="Akzent" value={t.accent}
+                   options={['#b8462a','#1f8a5b','#2a6fdb','#7a5ae0','#ffb04a']}
+                   onChange={(v) => setTweak('accent', v)} />
+      <TweakSection label="Reifen" />
+      <TweakRadio  label="Stil" value={t.tires} options={['gefüllt','kontur']}
+                   onChange={(v) => setTweak('tires', v)} />
+      <TweakSection label="Komponenten-Farben" />
+      <TweakColor  label="Rahmen"  value={t.colFrame}  options={PART_PALETTE}
+                   onChange={(v) => setTweak('colFrame', v)} />
+      <TweakColor  label="Reifen"  value={t.colTire}   options={PART_PALETTE}
+                   onChange={(v) => setTweak('colTire', v)} />
+      <TweakColor  label="Antrieb" value={t.colDrive}  options={PART_PALETTE}
+                   onChange={(v) => setTweak('colDrive', v)} />
+      <TweakColor  label="Bremsen" value={t.colBrake}  options={PART_PALETTE}
+                   onChange={(v) => setTweak('colBrake', v)} />
+      <TweakColor  label="Lenker"  value={t.colBar}    options={PART_PALETTE}
+                   onChange={(v) => setTweak('colBar', v)} />
+      <TweakColor  label="Sattel"  value={t.colSaddle} options={PART_PALETTE}
+                   onChange={(v) => setTweak('colSaddle', v)} />
+      <TweakSection label="HUD" />
+      <TweakToggle label="Hover-Labels" value={t.hudLabels}
+                   onChange={(v) => setTweak('hudLabels', v)} />
+      <TweakToggle label="Maß-Marken" value={t.rulerMarks}
+                   onChange={(v) => setTweak('rulerMarks', v)} />
+    </TweaksPanel>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('tweaks-root'));
+root.render(<App />);
+</script>
+</body>
+</html>

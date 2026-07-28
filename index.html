@@ -520,12 +520,9 @@ textarea { resize: vertical; min-height: 80px; }
   border-radius: 2px;
   margin: -6px auto 14px;
 }
-.sheet-title { font-size: 1.05rem; font-weight: 700; margin-bottom: 4px; }
-.sheet-sub   { color: var(--text-2); font-size: 0.85rem; margin-bottom: 14px; }
-.sheet-km    { font-size: 1.6rem; font-weight: 600; margin: 8px 0 4px; }
+.sheet-title { font-size: 1.05rem; font-weight: 700; margin-bottom: 10px; }
 .sheet-actions { display: flex; gap: 10px; margin-top: 14px; }
 .sheet-actions .btn { flex: 1; }
-.sheet-empty { color: var(--text-2); font-size: 0.9rem; margin-bottom: 14px; }
 
 /* ── Confirm modal ────────────────────────────────────────────── */
 .modal-overlay {
@@ -783,6 +780,7 @@ textarea { resize: vertical; min-height: 80px; }
           <select id="vt-typ" required>
             <option value="">Bitte wählen</option>
             <option value="mantel">Mantel</option>
+            <option value="schlauch">Schlauch</option>
             <option value="kette">Kette</option>
             <option value="kassette">Kassette</option>
             <option value="kurbel">Kurbel</option>
@@ -818,6 +816,15 @@ textarea { resize: vertical; min-height: 80px; }
         <div class="field">
           <label for="vt-notiz">Notiz</label>
           <textarea id="vt-notiz" rows="3" placeholder="optional"></textarea>
+        </div>
+        <div class="field" id="vt-mantel-info" hidden>
+          <label>Montiert mit</label>
+          <div class="settings-row-sub" id="vt-mantel-hinweis">–</div>
+        </div>
+        <div class="field" id="vt-platten-section" hidden>
+          <label>Löcher (Platten)</label>
+          <div id="vt-platten-liste"></div>
+          <button type="button" class="btn btn-secondary" id="vt-loch-melden-btn">Loch melden</button>
         </div>
         <input type="hidden" id="vt-id" />
         <input type="hidden" id="vt-status" />
@@ -996,9 +1003,7 @@ textarea { resize: vertical; min-height: 80px; }
     <div class="sheet" role="dialog" aria-modal="true">
       <div class="sheet-handle"></div>
       <div class="sheet-title" id="sheet-title">–</div>
-      <div class="sheet-sub" id="sheet-sub"></div>
-      <div class="sheet-km" id="sheet-km" hidden></div>
-      <div class="sheet-empty" id="sheet-empty" hidden>Noch nicht erfasst.</div>
+      <div class="settings-group" id="sheet-rows"></div>
       <div class="sheet-actions" id="sheet-actions"></div>
     </div>
   </div>
@@ -1014,6 +1019,32 @@ textarea { resize: vertical; min-height: 80px; }
       <div class="modal-actions">
         <button class="btn btn-secondary" id="tauschen-cancel">Abbrechen</button>
         <button class="btn btn-primary" id="tauschen-ok">Tauschen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Loch-melden-Modal ────────────────────────────────────── -->
+  <div class="modal-overlay" id="loch-modal" hidden>
+    <div class="modal">
+      <h2>Loch melden</h2>
+      <div class="field">
+        <label for="loch-datum-input">Datum</label>
+        <input id="loch-datum-input" type="date" />
+      </div>
+      <div class="field">
+        <label for="loch-schwere-input">Schweregrad</label>
+        <select id="loch-schwere-input">
+          <option value="leicht">Leicht – weiter fahrbar (z.B. mit Pumpen)</option>
+          <option value="schwer">Schwer – Schlauch unbrauchbar (wird getauscht)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="loch-notiz-input">Notiz</label>
+        <input id="loch-notiz-input" type="text" placeholder="optional" autocomplete="off" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="loch-cancel">Abbrechen</button>
+        <button class="btn btn-primary" id="loch-ok">Melden</button>
       </div>
     </div>
   </div>
@@ -1043,13 +1074,14 @@ const DB_NAME        = 'bike-log';
 const DB_VERSION     = 2;
 const STORE          = 'data';
 const DATA_KEY       = 'main';
-const APP_VERSION    = '2.0.0';
-const SCHEMA_VERSION = 2;
+const APP_VERSION    = '2.1.0';
+const SCHEMA_VERSION = 3;
 const BACKUP_DAYS    = 7;
 
 // ── Verschleissteil Defaults ──────────────────────────────────
 const DEFAULT_ERWARTETE_KM = {
   mantel: 4000,
+  schlauch: 2000,
   kette: 3000,
   kassette: 9000,
   bremsbelag: 2000,
@@ -1058,28 +1090,37 @@ const DEFAULT_ERWARTETE_KM = {
 };
 
 // ── Verschleissteil Typen & Positionen ────────────────────────
-const VALID_TYPEN = ['mantel', 'kette', 'kassette', 'kurbel', 'kettenblatt', 'schaltwerk', 'bremsbelag', 'bremsscheibe', 'zug', 'lenkerband', 'sonstiges'];
+const VALID_TYPEN = ['mantel', 'schlauch', 'kette', 'kassette', 'kurbel', 'kettenblatt', 'schaltwerk', 'bremsbelag', 'bremsscheibe', 'zug', 'lenkerband', 'sonstiges'];
 const VALID_POSITIONEN = ['vorne', 'hinten', null];
 
-// ── SVG-Schema: Mapping Komponente → Verschleissteil ──────────
+// ── SVG-Schema: Mapping Hotspot → Verschleissteil(e) ──────────
 // Erweitern: neuen Eintrag hinzufügen, passende <g class="hot" data-typ data-position> ins SVG, fertig.
+// "komponenten" ist ein Array, da ein Hotspot (z.B. Reifen) mehrere Verschleissteile abbilden kann (Mantel + Schlauch).
 const SVG_KOMPONENTEN = [
-  { svgId: 'svg-mantel-vorne',   typ: 'mantel',     position: 'vorne',  label: 'Reifen vorne' },
-  { svgId: 'svg-mantel-hinten',  typ: 'mantel',     position: 'hinten', label: 'Reifen hinten' },
-  { svgId: 'svg-kette',          typ: 'kette',      position: null,     label: 'Kette' },
-  { svgId: 'svg-kassette',       typ: 'kassette',   position: null,     label: 'Kassette' },
-  { svgId: 'svg-kurbel',         typ: 'kurbel',     position: null,     label: 'Kurbel / Kettenblatt' },
-  { svgId: 'svg-schaltwerk',     typ: 'schaltwerk', position: null,     label: 'Schaltwerk' },
-  { svgId: 'svg-bremse-vorne',   typ: 'bremsbelag', position: 'vorne',  label: 'Bremse vorne' },
-  { svgId: 'svg-bremse-hinten',  typ: 'bremsbelag', position: 'hinten', label: 'Bremse hinten' },
-  { svgId: 'svg-cockpit',        typ: 'lenkerband', position: null,     label: 'Lenkerband' }
+  { svgId: 'svg-mantel-vorne',   position: 'vorne',  title: 'Reifen vorne',  komponenten: [
+      { typ: 'mantel',   label: 'Mantel' },
+      { typ: 'schlauch', label: 'Schlauch' }
+    ] },
+  { svgId: 'svg-mantel-hinten',  position: 'hinten', title: 'Reifen hinten', komponenten: [
+      { typ: 'mantel',   label: 'Mantel' },
+      { typ: 'schlauch', label: 'Schlauch' }
+    ] },
+  { svgId: 'svg-kette',          position: null,     title: 'Kette',      komponenten: [{ typ: 'kette',      label: 'Kette' }] },
+  { svgId: 'svg-kassette',       position: null,     title: 'Kassette',   komponenten: [{ typ: 'kassette',   label: 'Kassette' }] },
+  { svgId: 'svg-kurbel',         position: null,     title: 'Kurbel / Kettenblatt', komponenten: [{ typ: 'kurbel',     label: 'Kurbel / Kettenblatt' }] },
+  { svgId: 'svg-schaltwerk',     position: null,     title: 'Schaltwerk', komponenten: [{ typ: 'schaltwerk', label: 'Schaltwerk' }] },
+  { svgId: 'svg-bremse-vorne',   position: 'vorne',  title: 'Bremse vorne',  komponenten: [{ typ: 'bremsbelag', label: 'Bremsbelag' }] },
+  { svgId: 'svg-bremse-hinten',  position: 'hinten', title: 'Bremse hinten', komponenten: [{ typ: 'bremsbelag', label: 'Bremsbelag' }] },
+  { svgId: 'svg-cockpit',        position: null,     title: 'Lenkerband', komponenten: [{ typ: 'lenkerband', label: 'Lenkerband' }] }
 ];
 
 const TYP_LABEL = {
-  mantel: 'Mantel', kette: 'Kette', kassette: 'Kassette', kurbel: 'Kurbel',
+  mantel: 'Mantel', schlauch: 'Schlauch', kette: 'Kette', kassette: 'Kassette', kurbel: 'Kurbel',
   kettenblatt: 'Kettenblatt', schaltwerk: 'Schaltwerk', bremsbelag: 'Bremsbelag',
   bremsscheibe: 'Bremsscheibe', zug: 'Zug', lenkerband: 'Lenkerband', sonstiges: 'Sonstiges'
 };
+
+const SCHWERE_LABEL = { leicht: 'Leicht', schwer: 'Schwer' };
 
 // ── IndexedDB ──────────────────────────────────────────────────
 let _db = null;
@@ -1099,10 +1140,7 @@ function openDB() {
 }
 
 // ── Migration v1 → v2 ────────────────────────────────────────
-function migrateState(oldState) {
-  // bereits v2 oder höher
-  if (oldState.schemaVersion >= 2) return oldState;
-
+function migrateV1toV2(oldState) {
   const newState = { ...oldState, schemaVersion: 2 };
 
   // Bike: Ausstattung ergänzen
@@ -1121,10 +1159,30 @@ function migrateState(oldState) {
   // Verschleissteile-Array hinzufügen
   newState.verschleissteile = [];
 
-  // Meta aktualisieren
-  newState.meta = { ...oldState.meta, appVersion: APP_VERSION };
-
   return newState;
+}
+
+// ── Migration v2 → v3 ────────────────────────────────────────
+// Ergänzt bei bestehenden Verschleissteilen die Loch-Historie (Feature: Schlauch erfassen)
+function migrateV2toV3(oldState) {
+  const newState = { ...oldState, schemaVersion: 3 };
+  newState.verschleissteile = oldState.verschleissteile.map(v => ({
+    ...v,
+    plattenHistorie: v.plattenHistorie || []
+  }));
+  return newState;
+}
+
+function migrateState(oldState) {
+  let state = oldState;
+  if (state.schemaVersion < 2) state = migrateV1toV2(state);
+  if (state.schemaVersion < 3) state = migrateV2toV3(state);
+
+  if (state !== oldState) {
+    state.meta = { ...oldState.meta, appVersion: APP_VERSION };
+  }
+
+  return state;
 }
 
 async function dbLoad() {
@@ -1269,8 +1327,36 @@ function createVerschleissteil(overrides = {}) {
     status: overrides.status || 'aktiv',
     ausgebautAm: overrides.ausgebautAm ?? null,
     ausbauGrund: overrides.ausbauGrund || '',
-    notiz: overrides.notiz || ''
+    notiz: overrides.notiz || '',
+    plattenHistorie: overrides.plattenHistorie || []
   };
+}
+
+/** Findet den Mantel (gleiche Position), der sich zeitlich mit diesem Schlauch überschneidet */
+function getMantelWaehrend(schlauch) {
+  const start = schlauch.eingebautAm;
+  const end = schlauch.ausgebautAm || today();
+  return state.verschleissteile.find(v =>
+    v.typ === 'mantel' &&
+    (v.position ?? null) === (schlauch.position ?? null) &&
+    v.eingebautAm <= end &&
+    (v.ausgebautAm || today()) >= start
+  );
+}
+
+/** Meldet ein Loch (Platten) an einem Schlauch. Bei "schwer" wird das Teil automatisch getauscht. */
+function meldeLoch(id, { datum, schwere, notiz }) {
+  const vt = state.verschleissteile.find(v => v.id === id);
+  if (!vt || vt.status !== 'aktiv') return null;
+
+  vt.plattenHistorie = vt.plattenHistorie || [];
+  vt.plattenHistorie.push({ id: crypto.randomUUID(), datum, schwere, notiz: notiz || '' });
+
+  if (schwere === 'schwer') {
+    const grund = 'Platten (schwer)' + (notiz ? ': ' + notiz : '');
+    return { neu: tauscheVerschleissteil({ id, ausbauGrund: grund }), alt: vt };
+  }
+  return { neu: null, alt: vt };
 }
 
 /** Wechselt ein Verschleissteil (archiviert altes, erstellt neues) */
@@ -1590,14 +1676,18 @@ function renderVerschleissteilItem(vt) {
   const warnKlasse = getVerschleissteilWarnKlasse(vt);
   const kmText = formatVerschleissteilKm(vt);
   const positionText = vt.position ? ` (${vt.position})` : '';
-  
+  const anzahlLoecher = vt.plattenHistorie?.length || 0;
+  const plattenText = vt.typ === 'schlauch' && anzahlLoecher > 0
+    ? ` · ${anzahlLoecher} ${anzahlLoecher === 1 ? 'Loch' : 'Löcher'}`
+    : '';
+
   return `
     <div class="settings-group" style="margin-bottom:8px">
       <button class="settings-row tappable" data-id="${vt.id}" type="button">
         <span class="settings-row-icon">🔧</span>
         <span class="settings-row-label">${vt.typ}${positionText}</span>
         <span class="settings-row-sub ${warnKlasse}">${vt.bezeichnung || '–'}</span>
-        <span class="settings-row-sub ${warnKlasse}">${kmText}</span>
+        <span class="settings-row-sub ${warnKlasse}">${kmText}${plattenText}</span>
         <span class="settings-row-chevron">›</span>
       </button>
     </div>
@@ -1621,8 +1711,34 @@ function openVerschleissteilForm(vt = null) {
   // Buttons sichtbarkeit
   document.getElementById('vt-tauschen-btn').hidden = isNew || vt.status !== 'aktiv';
   document.getElementById('vt-delete-btn').hidden = isNew;
-  
+
+  renderSchlauchInfo(vt);
+
   showView('view-verschleissteil-form');
+}
+
+/** Zeigt bei Schläuchen die Mantel-Verknüpfung und Loch-Historie an */
+function renderSchlauchInfo(vt) {
+  const mantelInfo = document.getElementById('vt-mantel-info');
+  const plattenSection = document.getElementById('vt-platten-section');
+  const isSchlauch = !!vt && vt.typ === 'schlauch';
+
+  mantelInfo.hidden = !isSchlauch;
+  plattenSection.hidden = !isSchlauch;
+  if (!isSchlauch) return;
+
+  const mantel = getMantelWaehrend(vt);
+  document.getElementById('vt-mantel-hinweis').textContent = mantel
+    ? `${mantel.bezeichnung || TYP_LABEL.mantel}${mantel.position ? ' · ' + mantel.position : ''}`
+    : 'Kein überlappender Mantel gefunden.';
+
+  const historie = [...(vt.plattenHistorie || [])].sort((a, b) => b.datum.localeCompare(a.datum));
+  const listEl = document.getElementById('vt-platten-liste');
+  listEl.innerHTML = historie.length
+    ? historie.map(p => `
+        <div class="settings-row-sub">${p.datum} · <strong>${SCHWERE_LABEL[p.schwere] || p.schwere}</strong>${p.notiz ? ' · ' + p.notiz : ''}</div>
+      `).join('')
+    : '<div class="settings-row-sub">Noch keine Löcher gemeldet.</div>';
 }
 
 function getFormVerschleissteil() {
@@ -1666,7 +1782,8 @@ async function saveVerschleissteil(e) {
     status: document.getElementById('vt-status').value || 'aktiv',
     notiz: formData.notiz,
     ausgebautAm: existing?.ausgebautAm,
-    ausbauGrund: existing?.ausbauGrund
+    ausbauGrund: existing?.ausbauGrund,
+    plattenHistorie: existing?.plattenHistorie
   });
 
   if (isNew) {
@@ -1757,6 +1874,71 @@ function showTauschenGrundDialog() {
   });
 }
 
+async function meldeLochHandler() {
+  const id = document.getElementById('vt-id').value;
+  if (!id) return;
+
+  const result = await showLochMeldenDialog();
+  if (!result) return; // Abgebrochen
+
+  const vt = state.verschleissteile.find(v => v.id === id);
+  if (!vt || vt.status !== 'aktiv') {
+    showToast('Nur aktive Teile können ein Loch melden.', 'error');
+    return;
+  }
+
+  const { neu } = meldeLoch(id, result);
+
+  try {
+    await dbSave(state);
+    renderVerschleissteile();
+    if (neu) {
+      openVerschleissteilForm(neu);
+      showToast('Loch gemeldet. Schlauch getauscht.');
+    } else {
+      openVerschleissteilForm(vt);
+      showToast('Loch gemeldet.');
+    }
+  } catch (err) {
+    showToast('Fehler beim Speichern: ' + err.message, 'error');
+  }
+}
+
+function showLochMeldenDialog() {
+  return new Promise(resolve => {
+    const overlay   = document.getElementById('loch-modal');
+    const datumIn   = document.getElementById('loch-datum-input');
+    const schwereIn = document.getElementById('loch-schwere-input');
+    const notizIn   = document.getElementById('loch-notiz-input');
+    const okBtn     = document.getElementById('loch-ok');
+    const cancel    = document.getElementById('loch-cancel');
+
+    datumIn.value = today();
+    schwereIn.value = 'leicht';
+    notizIn.value = '';
+    overlay.hidden = false;
+
+    const cleanup = () => {
+      overlay.hidden = true;
+      okBtn.removeEventListener('click', onOk);
+      cancel.removeEventListener('click', onCancel);
+    };
+    const onOk = () => {
+      const v = {
+        datum: datumIn.value || today(),
+        schwere: schwereIn.value,
+        notiz: notizIn.value.trim()
+      };
+      cleanup();
+      resolve(v);
+    };
+    const onCancel = () => { cleanup(); resolve(null); };
+
+    okBtn.addEventListener('click', onOk);
+    cancel.addEventListener('click', onCancel);
+  });
+}
+
 // ── Bike-Schema (SVG) ──────────────────────────────────────────
 let _schemaRenderedDecor = false;
 let _schemaOrigin = 'view-home';
@@ -1809,16 +1991,22 @@ function findKomponente(typ, position) {
 
 function renderBikeSchema() {
   renderSchemaDecor();
-  // Warnklassen pro SVG-Komponente setzen
+  // Warnklassen pro Hotspot setzen (schlimmster Zustand aller Teile an diesem Hotspot)
   SVG_KOMPONENTEN.forEach(k => {
     const el = document.getElementById(k.svgId);
     if (!el) return;
     el.classList.remove('warn-1', 'warn-2');
-    const vt = findKomponente(k.typ, k.position);
-    if (!vt) return;
-    const kl = getVerschleissteilWarnKlasse(vt);
-    if (kl === 'warn-level-1') el.classList.add('warn-1');
-    if (kl === 'warn-level-2') el.classList.add('warn-2');
+
+    let schlimmste = '';
+    k.komponenten.forEach(comp => {
+      const vt = findKomponente(comp.typ, k.position);
+      if (!vt) return;
+      const kl = getVerschleissteilWarnKlasse(vt);
+      if (kl === 'warn-level-2') schlimmste = 'warn-level-2';
+      else if (kl === 'warn-level-1' && schlimmste !== 'warn-level-2') schlimmste = 'warn-level-1';
+    });
+    if (schlimmste === 'warn-level-1') el.classList.add('warn-1');
+    if (schlimmste === 'warn-level-2') el.classList.add('warn-2');
   });
 }
 
@@ -1826,52 +2014,44 @@ function openKomponenteSheet(svgId) {
   const k = SVG_KOMPONENTEN.find(x => x.svgId === svgId);
   if (!k) return;
 
-  const vt = findKomponente(k.typ, k.position);
-  const sheet  = document.getElementById('komponente-sheet');
-  const title  = document.getElementById('sheet-title');
-  const sub    = document.getElementById('sheet-sub');
-  const kmEl   = document.getElementById('sheet-km');
-  const empty  = document.getElementById('sheet-empty');
+  const sheet   = document.getElementById('komponente-sheet');
+  const title   = document.getElementById('sheet-title');
+  const rowsEl  = document.getElementById('sheet-rows');
   const actions = document.getElementById('sheet-actions');
 
-  title.textContent = k.label;
+  title.textContent = k.title;
+  rowsEl.innerHTML = '';
   actions.innerHTML = '';
 
-  if (vt) {
-    sub.textContent = vt.bezeichnung || `${TYP_LABEL[vt.typ] || vt.typ}${vt.position ? ' · ' + vt.position : ''}`;
-    kmEl.textContent = formatVerschleissteilKm(vt);
-    kmEl.className = 'sheet-km ' + (getVerschleissteilWarnKlasse(vt) || '');
-    kmEl.hidden = false;
-    empty.hidden = true;
+  k.komponenten.forEach(comp => {
+    const vt = findKomponente(comp.typ, k.position);
+    const warnKlasse = vt ? getVerschleissteilWarnKlasse(vt) : '';
+    const statusText = vt ? formatVerschleissteilKm(vt) : 'Nicht erfasst';
 
-    const detailBtn = document.createElement('button');
-    detailBtn.className = 'btn btn-primary';
-    detailBtn.textContent = 'Details';
-    detailBtn.addEventListener('click', () => {
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'settings-row tappable';
+    row.innerHTML = `
+      <span class="settings-row-label">${comp.label}</span>
+      <span class="settings-row-sub ${warnKlasse}">${statusText}</span>
+      <span class="settings-row-chevron">›</span>
+    `;
+    row.addEventListener('click', () => {
       sheet.hidden = true;
-      openVerschleissteilForm(vt);
+      if (vt) {
+        openVerschleissteilForm(vt);
+      } else {
+        openVerschleissteilForm();
+        // Typ + Position vorbelegen
+        document.getElementById('vt-typ').value = comp.typ;
+        document.getElementById('vt-position').value = k.position || '';
+        // Default-km nachziehen
+        const def = getDefaultErwarteteKm(comp.typ);
+        if (def != null) document.getElementById('vt-erwarteteKm').value = def;
+      }
     });
-    actions.appendChild(detailBtn);
-  } else {
-    sub.textContent = `${TYP_LABEL[k.typ] || k.typ}${k.position ? ' · ' + k.position : ''}`;
-    kmEl.hidden = true;
-    empty.hidden = false;
-
-    const newBtn = document.createElement('button');
-    newBtn.className = 'btn btn-primary';
-    newBtn.textContent = 'Jetzt anlegen';
-    newBtn.addEventListener('click', () => {
-      sheet.hidden = true;
-      openVerschleissteilForm();
-      // Typ + Position vorbelegen
-      document.getElementById('vt-typ').value = k.typ;
-      document.getElementById('vt-position').value = k.position || '';
-      // Default-km nachziehen
-      const def = getDefaultErwarteteKm(k.typ);
-      if (def != null) document.getElementById('vt-erwarteteKm').value = def;
-    });
-    actions.appendChild(newBtn);
-  }
+    rowsEl.appendChild(row);
+  });
 
   const closeBtn = document.createElement('button');
   closeBtn.className = 'btn btn-secondary';
@@ -1943,8 +2123,8 @@ async function importData(file) {
     return;
   }
 
-  // Migration für v1-Daten
-  const importedState = parsed.schemaVersion < 2 ? migrateState(parsed) : parsed;
+  // Migration für ältere Schema-Versionen
+  const importedState = parsed.schemaVersion < SCHEMA_VERSION ? migrateState(parsed) : parsed;
 
   const ok = await showConfirm(
     'Daten importieren?',
@@ -2053,13 +2233,19 @@ function bindEvents() {
   document.getElementById('verschleissteil-form').addEventListener('submit', saveVerschleissteil);
   document.getElementById('vt-delete-btn').addEventListener('click', deleteVerschleissteil);
   document.getElementById('vt-tauschen-btn').addEventListener('click', tauscheVerschleissteilHandler);
+  document.getElementById('vt-loch-melden-btn').addEventListener('click', meldeLochHandler);
 
   // Live-Default für erwarteteKm beim Typ-Wechsel (nur wenn Feld leer ist)
   document.getElementById('vt-typ').addEventListener('change', (e) => {
     const kmField = document.getElementById('vt-erwarteteKm');
-    if (kmField.value) return;
-    const def = getDefaultErwarteteKm(e.target.value);
-    if (def != null) kmField.value = def;
+    if (!kmField.value) {
+      const def = getDefaultErwarteteKm(e.target.value);
+      if (def != null) kmField.value = def;
+    }
+
+    const id = document.getElementById('vt-id').value;
+    const existing = id ? state.verschleissteile.find(v => v.id === id) : null;
+    renderSchlauchInfo(existing && existing.typ === e.target.value ? existing : null);
   });
 
   // Bike-Schema-View

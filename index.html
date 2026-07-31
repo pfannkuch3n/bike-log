@@ -704,6 +704,12 @@ textarea { resize: vertical; min-height: 80px; }
           <span class="settings-row-sub" id="verschleissteile-count">0 aktiv</span>
           <span class="settings-row-chevron">›</span>
         </button>
+        <button class="settings-row tappable" id="btn-maengel" type="button">
+          <span class="settings-row-icon">⚠️</span>
+          <span class="settings-row-label">Mängel</span>
+          <span class="settings-row-sub" id="maengel-count">0 offen</span>
+          <span class="settings-row-chevron">›</span>
+        </button>
       </div>
     </div>
   </div>
@@ -826,11 +832,78 @@ textarea { resize: vertical; min-height: 80px; }
           <div id="vt-platten-liste"></div>
           <button type="button" class="btn btn-secondary" id="vt-loch-melden-btn">Loch melden</button>
         </div>
+        <div class="field" id="vt-maengel-section" hidden>
+          <label>Mängel</label>
+          <div id="vt-maengel-liste"></div>
+          <button type="button" class="btn btn-secondary" id="vt-mangel-melden-btn">Mangel melden</button>
+        </div>
         <input type="hidden" id="vt-id" />
         <input type="hidden" id="vt-status" />
         <button type="submit" class="btn btn-primary">Speichern</button>
         <button type="button" class="btn btn-secondary" id="vt-tauschen-btn" hidden>Tauschen</button>
         <button type="button" class="btn btn-danger" id="vt-delete-btn" hidden>Löschen</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Mängelliste ──────────────────────────────────────────── -->
+  <div class="view" id="view-maengel">
+    <div class="topbar">
+      <button class="icon-btn" id="btn-maengel-back" aria-label="Zurück">←</button>
+      <h1>Mängel</h1>
+    </div>
+    <div class="content" style="padding-top:8px">
+      <div class="settings-group" style="margin-bottom:16px">
+        <button class="settings-row tappable" id="btn-neuer-mangel" type="button">
+          <span class="settings-row-icon">➕</span>
+          <span class="settings-row-label">Mangel melden</span>
+          <span class="settings-row-chevron">›</span>
+        </button>
+      </div>
+      <div id="maengel-list"></div>
+    </div>
+  </div>
+
+  <!-- ── Mangel-Formular ──────────────────────────────────────── -->
+  <div class="view" id="view-mangel-form">
+    <div class="topbar">
+      <button class="icon-btn" id="btn-mangel-form-back" aria-label="Zurück">←</button>
+      <h1 id="mangel-form-title">Neuer Mangel</h1>
+    </div>
+    <div class="content" style="padding-top:8px">
+      <form id="mangel-form">
+        <div class="field">
+          <label for="m-beschreibung">Beschreibung *</label>
+          <textarea id="m-beschreibung" rows="3" required placeholder="z.B. Knacken im Tretlager bei Belastung"></textarea>
+        </div>
+        <div class="field">
+          <label for="m-kategorie">Kategorie</label>
+          <select id="m-kategorie">
+            <option value="sicherheit">Sicherheit</option>
+            <option value="funktion">Funktion</option>
+            <option value="optik">Optik</option>
+            <option value="sonstiges">Sonstiges</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="m-verschleissteil">Komponente</label>
+          <select id="m-verschleissteil">
+            <option value="">– keine Komponente –</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="m-erstelltAm">Datum</label>
+          <input id="m-erstelltAm" type="date" required />
+        </div>
+        <div class="field">
+          <label for="m-notiz">Notiz</label>
+          <textarea id="m-notiz" rows="2" placeholder="optional"></textarea>
+        </div>
+        <input type="hidden" id="m-id" />
+        <input type="hidden" id="m-status" />
+        <button type="submit" class="btn btn-primary">Speichern</button>
+        <button type="button" class="btn btn-secondary" id="m-erledigt-btn" hidden>Als erledigt markieren</button>
+        <button type="button" class="btn btn-danger" id="m-delete-btn" hidden>Löschen</button>
       </form>
     </div>
   </div>
@@ -1075,7 +1148,7 @@ const DB_VERSION     = 2;
 const STORE          = 'data';
 const DATA_KEY       = 'main';
 const APP_VERSION    = '2.1.0';
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 const BACKUP_DAYS    = 7;
 
 // ── Verschleissteil Defaults ──────────────────────────────────
@@ -1121,6 +1194,9 @@ const TYP_LABEL = {
 };
 
 const SCHWERE_LABEL = { leicht: 'Leicht', schwer: 'Schwer' };
+
+// ── Mängel ─────────────────────────────────────────────────────
+const KATEGORIE_LABEL = { sicherheit: 'Sicherheit', funktion: 'Funktion', optik: 'Optik', sonstiges: 'Sonstiges' };
 
 // ── IndexedDB ──────────────────────────────────────────────────
 let _db = null;
@@ -1173,10 +1249,19 @@ function migrateV2toV3(oldState) {
   return newState;
 }
 
+// ── Migration v3 → v4 ────────────────────────────────────────
+// Ergänzt die Mängelliste (Feature: Mängel/Schadensmeldung)
+function migrateV3toV4(oldState) {
+  const newState = { ...oldState, schemaVersion: 4 };
+  newState.maengel = oldState.maengel || [];
+  return newState;
+}
+
 function migrateState(oldState) {
   let state = oldState;
   if (state.schemaVersion < 2) state = migrateV1toV2(state);
   if (state.schemaVersion < 3) state = migrateV2toV3(state);
+  if (state.schemaVersion < 4) state = migrateV3toV4(state);
 
   if (state !== oldState) {
     state.meta = { ...oldState.meta, appVersion: APP_VERSION };
@@ -1235,6 +1320,7 @@ function emptyState() {
     },
     fahrten: [],
     verschleissteile: [],
+    maengel: [],
     meta: { letzterExport: null, appVersion: APP_VERSION },
   };
 }
@@ -1395,6 +1481,48 @@ function sortedVerschleissteile() {
     // Dann nach Typ
     return a.typ.localeCompare(b.typ);
   });
+}
+
+// ── Mängel Helfer ──────────────────────────────────────────────
+
+/** Erstellt ein neues Mangel-Objekt mit Defaults */
+function createMangel(overrides = {}) {
+  return {
+    id: overrides.id || crypto.randomUUID(),
+    beschreibung: overrides.beschreibung || '',
+    kategorie: overrides.kategorie || 'sonstiges',
+    verschleissteilId: overrides.verschleissteilId || null,
+    erstelltAm: overrides.erstelltAm || today(),
+    status: overrides.status || 'offen',
+    erledigtAm: overrides.erledigtAm ?? null,
+    notiz: overrides.notiz || ''
+  };
+}
+
+/** Löscht einen Mangel */
+function loescheMangel(id) {
+  state.maengel = state.maengel.filter(m => m.id !== id);
+}
+
+// Sortiert Mängel: offene zuerst (neueste zuerst), dann erledigte
+function sortedMaengel() {
+  return [...state.maengel].sort((a, b) => {
+    if (a.status === 'offen' && b.status !== 'offen') return -1;
+    if (b.status === 'offen' && a.status !== 'offen') return 1;
+    return b.erstelltAm.localeCompare(a.erstelltAm);
+  });
+}
+
+/** Findet das Verschleissteil, auf das sich ein Mangel bezieht (falls vorhanden) */
+function getMangelKomponente(mangel) {
+  if (!mangel.verschleissteilId) return null;
+  return state.verschleissteile.find(v => v.id === mangel.verschleissteilId) || null;
+}
+
+function formatKomponenteLabel(vt) {
+  if (!vt) return null;
+  const positionText = vt.position ? ` (${vt.position})` : '';
+  return `${TYP_LABEL[vt.typ] || vt.typ}${positionText}${vt.bezeichnung ? ' · ' + vt.bezeichnung : ''}`;
 }
 
 // ── Toast ──────────────────────────────────────────────────────
@@ -1566,6 +1694,10 @@ function renderBike() {
   // Verschleissteile Count
   const aktivCount = state.verschleissteile?.filter(v => v.status === 'aktiv').length || 0;
   document.getElementById('verschleissteile-count').textContent = `${aktivCount} aktiv`;
+
+  // Mängel Count
+  const offenCount = state.maengel?.filter(m => m.status === 'offen').length || 0;
+  document.getElementById('maengel-count').textContent = `${offenCount} offen`;
 }
 
 function updateBikePhoto(dataUrl) {
@@ -1713,8 +1845,31 @@ function openVerschleissteilForm(vt = null) {
   document.getElementById('vt-delete-btn').hidden = isNew;
 
   renderSchlauchInfo(vt);
+  renderVtMaengel(vt);
 
   showView('view-verschleissteil-form');
+}
+
+/** Zeigt die zu diesem Verschleissteil gemeldeten Mängel an (alle Typen) */
+function renderVtMaengel(vt) {
+  const section = document.getElementById('vt-maengel-section');
+  section.hidden = !vt;
+  if (!vt) return;
+
+  const liste = state.maengel
+    .filter(m => m.verschleissteilId === vt.id)
+    .sort((a, b) => {
+      if (a.status === 'offen' && b.status !== 'offen') return -1;
+      if (b.status === 'offen' && a.status !== 'offen') return 1;
+      return b.erstelltAm.localeCompare(a.erstelltAm);
+    });
+
+  const listEl = document.getElementById('vt-maengel-liste');
+  listEl.innerHTML = liste.length
+    ? liste.map(m => `
+        <div class="settings-row-sub">${m.erstelltAm} · <strong>${KATEGORIE_LABEL[m.kategorie] || m.kategorie}</strong> · ${m.status === 'offen' ? 'offen' : 'erledigt'} · ${m.beschreibung}</div>
+      `).join('')
+    : '<div class="settings-row-sub">Noch keine Mängel gemeldet.</div>';
 }
 
 /** Zeigt bei Schläuchen die Mantel-Verknüpfung und Loch-Historie an */
@@ -1937,6 +2092,176 @@ function showLochMeldenDialog() {
     okBtn.addEventListener('click', onOk);
     cancel.addEventListener('click', onCancel);
   });
+}
+
+// ── Mängel UI ──────────────────────────────────────────────────
+
+function renderMaengel() {
+  const listEl = document.getElementById('maengel-list');
+  const maengelList = sortedMaengel();
+
+  if (maengelList.length === 0) {
+    listEl.innerHTML = '<p class="empty-state">Noch keine Mängel erfasst.<br>Tippe auf "Mangel melden".</p>';
+    return;
+  }
+
+  const offen = maengelList.filter(m => m.status === 'offen');
+  const erledigt = maengelList.filter(m => m.status === 'erledigt');
+
+  let html = '';
+  if (offen.length > 0) {
+    html += `<p class="section-title">Offen (${offen.length})</p>`;
+    html += offen.map(m => renderMangelItem(m)).join('');
+  }
+  if (erledigt.length > 0) {
+    html += `<p class="section-title" style="margin-top:16px">Erledigt (${erledigt.length})</p>`;
+    html += erledigt.map(m => renderMangelItem(m)).join('');
+  }
+  listEl.innerHTML = html;
+}
+
+function renderMangelItem(m) {
+  const komponente = formatKomponenteLabel(getMangelKomponente(m));
+  return `
+    <div class="settings-group" style="margin-bottom:8px">
+      <button class="settings-row tappable" data-id="${m.id}" type="button">
+        <span class="settings-row-icon">⚠️</span>
+        <span class="settings-row-label">${m.beschreibung}</span>
+        <span class="settings-row-sub">${KATEGORIE_LABEL[m.kategorie] || m.kategorie}${komponente ? ' · ' + komponente : ''}</span>
+        <span class="settings-row-sub">${m.erstelltAm}</span>
+        <span class="settings-row-chevron">›</span>
+      </button>
+    </div>
+  `;
+}
+
+function populateVerschleissteilSelect(selectedId) {
+  const select = document.getElementById('m-verschleissteil');
+  const options = ['<option value="">– keine Komponente –</option>'].concat(
+    sortedVerschleissteile().map(v =>
+      `<option value="${v.id}">${formatKomponenteLabel(v)}${v.status === 'archiviert' ? ' (archiviert)' : ''}</option>`
+    )
+  );
+  select.innerHTML = options.join('');
+  select.value = selectedId || '';
+}
+
+function openMangelForm(mangel = null, { verschleissteilId = '' } = {}) {
+  const isNew = !mangel;
+
+  document.getElementById('mangel-form-title').textContent = isNew ? 'Neuer Mangel' : 'Mangel bearbeiten';
+  document.getElementById('m-id').value = mangel?.id || '';
+  document.getElementById('m-beschreibung').value = mangel?.beschreibung || '';
+  document.getElementById('m-kategorie').value = mangel?.kategorie || 'sonstiges';
+  document.getElementById('m-erstelltAm').value = mangel?.erstelltAm || today();
+  document.getElementById('m-notiz').value = mangel?.notiz || '';
+  document.getElementById('m-status').value = mangel?.status || 'offen';
+
+  populateVerschleissteilSelect(mangel ? mangel.verschleissteilId : verschleissteilId);
+
+  const erledigtBtn = document.getElementById('m-erledigt-btn');
+  erledigtBtn.hidden = isNew;
+  erledigtBtn.textContent = mangel?.status === 'erledigt' ? 'Wieder öffnen' : 'Als erledigt markieren';
+  document.getElementById('m-delete-btn').hidden = isNew;
+
+  showView('view-mangel-form');
+}
+
+function getFormMangel() {
+  return {
+    id: document.getElementById('m-id').value,
+    beschreibung: document.getElementById('m-beschreibung').value.trim(),
+    kategorie: document.getElementById('m-kategorie').value,
+    verschleissteilId: document.getElementById('m-verschleissteil').value || null,
+    erstelltAm: document.getElementById('m-erstelltAm').value,
+    notiz: document.getElementById('m-notiz').value.trim()
+  };
+}
+
+async function saveMangel(e) {
+  e.preventDefault();
+
+  const formData = getFormMangel();
+
+  if (!formData.beschreibung || !formData.erstelltAm) {
+    showToast('Beschreibung und Datum sind Pflichtfelder.', 'error');
+    return;
+  }
+
+  const id = formData.id;
+  const isNew = !id;
+  const existing = isNew ? null : state.maengel.find(m => m.id === id);
+
+  const mangel = createMangel({
+    id: isNew ? null : id,
+    beschreibung: formData.beschreibung,
+    kategorie: formData.kategorie,
+    verschleissteilId: formData.verschleissteilId,
+    erstelltAm: formData.erstelltAm,
+    notiz: formData.notiz,
+    status: existing?.status,
+    erledigtAm: existing?.erledigtAm
+  });
+
+  if (isNew) {
+    state.maengel.push(mangel);
+  } else {
+    const idx = state.maengel.findIndex(m => m.id === id);
+    if (idx !== -1) state.maengel[idx] = mangel;
+  }
+
+  try {
+    await dbSave(state);
+    renderMaengel();
+    showToast(isNew ? 'Mangel gemeldet.' : 'Mangel aktualisiert.');
+    showView('view-maengel');
+  } catch (err) {
+    showToast('Fehler beim Speichern: ' + err.message, 'error');
+  }
+}
+
+async function toggleErledigtMangelHandler() {
+  const id = document.getElementById('m-id').value;
+  if (!id) return;
+
+  const mangel = state.maengel.find(m => m.id === id);
+  if (!mangel) return;
+
+  if (mangel.status === 'offen') {
+    mangel.status = 'erledigt';
+    mangel.erledigtAm = today();
+  } else {
+    mangel.status = 'offen';
+    mangel.erledigtAm = null;
+  }
+
+  try {
+    await dbSave(state);
+    renderMaengel();
+    openMangelForm(mangel);
+    showToast(mangel.status === 'erledigt' ? 'Mangel als erledigt markiert.' : 'Mangel wieder geöffnet.');
+  } catch (err) {
+    showToast('Fehler beim Speichern: ' + err.message, 'error');
+  }
+}
+
+async function deleteMangel() {
+  const id = document.getElementById('m-id').value;
+  if (!id) return;
+
+  const ok = await showConfirm('Mangel löschen?', 'Dieser Mangel wird dauerhaft gelöscht.');
+  if (!ok) return;
+
+  loescheMangel(id);
+
+  try {
+    await dbSave(state);
+    renderMaengel();
+    showToast('Mangel gelöscht.');
+    showView('view-maengel');
+  } catch (err) {
+    showToast('Fehler beim Löschen: ' + err.message, 'error');
+  }
 }
 
 // ── Bike-Schema (SVG) ──────────────────────────────────────────
@@ -2184,6 +2509,7 @@ function bindEvents() {
   document.getElementById('bike-form').addEventListener('submit', saveBike);
   document.getElementById('btn-bike-back').addEventListener('click', () => showView('view-home'));
   document.getElementById('btn-verschleissteile').addEventListener('click', () => { renderVerschleissteile(); showView('view-verschleissteile'); });
+  document.getElementById('btn-maengel').addEventListener('click', () => { renderMaengel(); showView('view-maengel'); });
 
   const photoArea  = document.getElementById('photo-area');
   const fotoInput  = document.getElementById('bike-foto-input');
@@ -2234,6 +2560,29 @@ function bindEvents() {
   document.getElementById('vt-delete-btn').addEventListener('click', deleteVerschleissteil);
   document.getElementById('vt-tauschen-btn').addEventListener('click', tauscheVerschleissteilHandler);
   document.getElementById('vt-loch-melden-btn').addEventListener('click', meldeLochHandler);
+  document.getElementById('vt-mangel-melden-btn').addEventListener('click', () => {
+    openMangelForm(null, { verschleissteilId: document.getElementById('vt-id').value });
+  });
+
+  // Mängel Liste
+  document.getElementById('btn-maengel-back').addEventListener('click', () => { renderBike(); showView('view-bike'); });
+  document.getElementById('btn-neuer-mangel').addEventListener('click', () => openMangelForm());
+
+  // Click-Handler für Mangel-Items (Event Delegation)
+  document.getElementById('maengel-list').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-id]');
+    if (btn) {
+      const id = btn.dataset.id;
+      const mangel = state.maengel.find(m => m.id === id);
+      if (mangel) openMangelForm(mangel);
+    }
+  });
+
+  // Mangel Formular
+  document.getElementById('btn-mangel-form-back').addEventListener('click', () => { renderMaengel(); showView('view-maengel'); });
+  document.getElementById('mangel-form').addEventListener('submit', saveMangel);
+  document.getElementById('m-delete-btn').addEventListener('click', deleteMangel);
+  document.getElementById('m-erledigt-btn').addEventListener('click', toggleErledigtMangelHandler);
 
   // Live-Default für erwarteteKm beim Typ-Wechsel (nur wenn Feld leer ist)
   document.getElementById('vt-typ').addEventListener('change', (e) => {

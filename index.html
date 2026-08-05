@@ -2405,7 +2405,9 @@ async function exportData() {
     const file = new File([blob], filename, { type: 'application/json' });
     try {
       if (navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: 'Bike Log Export' });
+        // Nur die Datei teilen: title/text erzeugt auf iOS ein zweites
+        // Share-Objekt ("Text.txt"), an dem "In Dateien sichern" scheitert.
+        await navigator.share({ files: [file] });
         showToast('Exportiert!');
         renderHome();
         renderSettings();

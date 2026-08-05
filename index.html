@@ -657,6 +657,13 @@ textarea { resize: vertical; min-height: 80px; }
 
         <p class="form-section-title">Ausstattung</p>
         <div class="field">
+          <label for="b-preset">Vorlage übernehmen</label>
+          <select id="b-preset">
+            <option value="">– Modell wählen –</option>
+          </select>
+          <p class="settings-row-sub" style="margin-top:6px">Füllt die Felder unten aus. Gespeichert wird erst mit „Speichern“ – vorher prüfen und korrigieren.</p>
+        </div>
+        <div class="field">
           <label for="b-ausstattung-rahmen">Rahmen</label>
           <input id="b-ausstattung-rahmen" type="text" placeholder="z.B. Aluminium, Carbon" autocomplete="off" />
         </div>
@@ -809,7 +816,8 @@ textarea { resize: vertical; min-height: 80px; }
         </div>
         <div class="field">
           <label for="vt-bezeichnung">Bezeichnung</label>
-          <input id="vt-bezeichnung" type="text" placeholder="z.B. Schwalbe G-One R 45mm" autocomplete="off" />
+          <input id="vt-bezeichnung" type="text" list="vt-bezeichnung-liste" placeholder="z.B. Schwalbe G-One R 45-622" autocomplete="off" />
+          <datalist id="vt-bezeichnung-liste"></datalist>
         </div>
         <div class="field">
           <label for="vt-eingebautAm">Eingebaut am *</label>
@@ -1197,6 +1205,63 @@ const SCHWERE_LABEL = { leicht: 'Leicht', schwer: 'Schwer' };
 
 // ── Mängel ─────────────────────────────────────────────────────
 const KATEGORIE_LABEL = { sicherheit: 'Sicherheit', funktion: 'Funktion', optik: 'Optik', sonstiges: 'Sonstiges' };
+
+// ── Komponenten-Katalog ────────────────────────────────────────
+// Vorschlagslisten je Typ für eine einheitliche Bezeichnung. Die Felder bleiben
+// Freitext – der Katalog schlägt nur vor. Eigene Bezeichnungen werden zur
+// Laufzeit ergänzt (siehe renderBezeichnungVorschlaege).
+// Schläuche folgen der ETRTO-Norm: <min>/<max>-<Felgendurchmesser>.
+const KOMPONENTEN_KATALOG = {
+  schlauch: [
+    '18/25-622', '18/28-622', '25/32-622', '28/47-622', '32/47-622', '40/62-622',
+    '40/60-584', '47/62-584',
+    '37/47-559', '47/62-559'
+  ],
+  mantel: [
+    'Schwalbe G-One Speed 40-622', 'Schwalbe G-One Allround 40-622',
+    'Schwalbe G-One Bite 45-622', 'Schwalbe G-One R 45-622',
+    'Continental Terra Trail 40-622', 'Continental Terra Speed 40-622',
+    'Continental Grand Prix 5000 32-622',
+    'Panaracer GravelKing SK 43-622', 'WTB Riddler 45-622',
+    'Pirelli Cinturato Gravel M 40-622'
+  ],
+  kette: [
+    'Shimano CN-HG601-11', 'Shimano CN-M7100 (12-fach)', 'Shimano CN-HG701-11',
+    'SRAM PC-1130', 'KMC X11', 'KMC X12'
+  ],
+  kassette: [
+    'Shimano CS-HG700-11 11-34', 'Shimano CS-M7100-12 10-51',
+    'Shimano CS-HG800-11 11-34', 'SRAM PG-1130 11-42'
+  ],
+  bremsbelag: [
+    'Shimano L03A Resin', 'Shimano L04C Metall', 'Shimano K02S Resin', 'SwissStop Disc 34 RS'
+  ],
+  bremsscheibe: [
+    'Shimano SM-RT70 160mm', 'Shimano SM-RT70 180mm',
+    'Shimano SM-RT800 160mm', 'Shimano RT-CL800 160mm'
+  ],
+  lenkerband: [
+    'Lizard Skins DSP 2.5', 'Fizik Tempo Microtex Bondcush', 'Supacaz Super Sticky Kush'
+  ]
+};
+
+// Vorbelegung der Ausstattung je Modell. Wird nur ins Formular geschrieben –
+// gespeichert wird erst, wenn du auf Speichern tippst.
+const BIKE_PRESETS = {
+  'maxcycles-gravel-lite': {
+    label: 'Maxcycles Gravel Lite',
+    ausstattung: {
+      rahmen: 'Maxcycles Gravel Lite, Aluminium',
+      gabel: 'Carbon',
+      schaltgruppe: 'Shimano GRX 810/600',
+      bremsen: 'Shimano GRX 600 Scheibenbremse',
+      laufraeder: 'Mach 1 Cross R-23, Shimano Naben, 28"',
+      sattel: '',
+      lenker: '',
+      vorbau: ''
+    }
+  }
+};
 
 // ── IndexedDB ──────────────────────────────────────────────────
 let _db = null;
@@ -1698,6 +1763,26 @@ function renderBike() {
   // Mängel Count
   const offenCount = state.maengel?.filter(m => m.status === 'offen').length || 0;
   document.getElementById('maengel-count').textContent = `${offenCount} offen`;
+
+  // Preset-Auswahl befüllen (Auswahl selbst wird nicht gespeichert)
+  const presetSelect = document.getElementById('b-preset');
+  presetSelect.innerHTML = ['<option value="">– Modell wählen –</option>']
+    .concat(Object.entries(BIKE_PRESETS).map(([key, p]) => `<option value="${key}">${p.label}</option>`))
+    .join('');
+}
+
+/** Schreibt eine Modell-Vorlage in die Ausstattungsfelder (nur ins Formular, nicht in den State) */
+function applyBikePreset(key) {
+  const preset = BIKE_PRESETS[key];
+  if (!preset) return;
+
+  Object.entries(preset.ausstattung).forEach(([feld, wert]) => {
+    const el = document.getElementById(`b-ausstattung-${feld}`);
+    // Bereits ausgefüllte Felder nicht überschreiben
+    if (el && !el.value.trim()) el.value = wert;
+  });
+
+  showToast('Vorlage eingetragen. Bitte prüfen und speichern.');
 }
 
 function updateBikePhoto(dataUrl) {
@@ -1846,6 +1931,7 @@ function openVerschleissteilForm(vt = null) {
 
   renderSchlauchInfo(vt);
   renderVtMaengel(vt);
+  renderBezeichnungVorschlaege(vt?.typ || '');
 
   showView('view-verschleissteil-form');
 }
@@ -1870,6 +1956,21 @@ function renderVtMaengel(vt) {
         <div class="settings-row-sub">${m.erstelltAm} · <strong>${KATEGORIE_LABEL[m.kategorie] || m.kategorie}</strong> · ${m.status === 'offen' ? 'offen' : 'erledigt'} · ${m.beschreibung}</div>
       `).join('')
     : '<div class="settings-row-sub">Noch keine Mängel gemeldet.</div>';
+}
+
+/** Füllt die Vorschlagsliste für die Bezeichnung: Katalog + bereits selbst verwendete Namen */
+function renderBezeichnungVorschlaege(typ) {
+  const katalog = KOMPONENTEN_KATALOG[typ] || [];
+
+  // Eigene Bezeichnungen desselben Typs ergänzen, damit Schreibweisen konsistent bleiben
+  const eigene = state.verschleissteile
+    .filter(v => v.typ === typ && v.bezeichnung)
+    .map(v => v.bezeichnung);
+
+  const alle = [...new Set([...katalog, ...eigene])].sort((a, b) => a.localeCompare(b, 'de'));
+
+  document.getElementById('vt-bezeichnung-liste').innerHTML =
+    alle.map(b => `<option value="${b.replace(/"/g, '&quot;')}"></option>`).join('');
 }
 
 /** Zeigt bei Schläuchen die Mantel-Verknüpfung und Loch-Historie an */
@@ -2512,6 +2613,10 @@ function bindEvents() {
   document.getElementById('btn-bike-back').addEventListener('click', () => showView('view-home'));
   document.getElementById('btn-verschleissteile').addEventListener('click', () => { renderVerschleissteile(); showView('view-verschleissteile'); });
   document.getElementById('btn-maengel').addEventListener('click', () => { renderMaengel(); showView('view-maengel'); });
+  document.getElementById('b-preset').addEventListener('change', (e) => {
+    applyBikePreset(e.target.value);
+    e.target.value = '';
+  });
 
   const photoArea  = document.getElementById('photo-area');
   const fotoInput  = document.getElementById('bike-foto-input');
@@ -2597,6 +2702,7 @@ function bindEvents() {
     const id = document.getElementById('vt-id').value;
     const existing = id ? state.verschleissteile.find(v => v.id === id) : null;
     renderSchlauchInfo(existing && existing.typ === e.target.value ? existing : null);
+    renderBezeichnungVorschlaege(e.target.value);
   });
 
   // Bike-Schema-View

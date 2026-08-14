@@ -657,6 +657,13 @@ textarea { resize: vertical; min-height: 80px; }
 
         <p class="form-section-title">Ausstattung</p>
         <div class="field">
+          <label for="b-preset">Vorlage übernehmen</label>
+          <select id="b-preset">
+            <option value="">– Modell wählen –</option>
+          </select>
+          <p class="settings-row-sub" style="margin-top:6px">Füllt die Felder unten aus. Gespeichert wird erst mit „Speichern“ – vorher prüfen und korrigieren.</p>
+        </div>
+        <div class="field">
           <label for="b-ausstattung-rahmen">Rahmen</label>
           <input id="b-ausstattung-rahmen" type="text" placeholder="z.B. Aluminium, Carbon" autocomplete="off" />
         </div>
@@ -792,6 +799,9 @@ textarea { resize: vertical; min-height: 80px; }
             <option value="kurbel">Kurbel</option>
             <option value="kettenblatt">Kettenblatt</option>
             <option value="schaltwerk">Schaltwerk</option>
+            <option value="umwerfer">Umwerfer</option>
+            <option value="innenlager">Innenlager</option>
+            <option value="steuersatz">Steuersatz</option>
             <option value="bremsbelag">Bremsbelag</option>
             <option value="bremsscheibe">Bremsscheibe</option>
             <option value="zug">Zug (Schalt/Brems)</option>
@@ -809,7 +819,8 @@ textarea { resize: vertical; min-height: 80px; }
         </div>
         <div class="field">
           <label for="vt-bezeichnung">Bezeichnung</label>
-          <input id="vt-bezeichnung" type="text" placeholder="z.B. Schwalbe G-One R 45mm" autocomplete="off" />
+          <input id="vt-bezeichnung" type="text" list="vt-bezeichnung-liste" placeholder="z.B. Schwalbe G-One R 45-622" autocomplete="off" />
+          <datalist id="vt-bezeichnung-liste"></datalist>
         </div>
         <div class="field">
           <label for="vt-eingebautAm">Eingebaut am *</label>
@@ -1159,11 +1170,13 @@ const DEFAULT_ERWARTETE_KM = {
   kassette: 9000,
   bremsbelag: 2000,
   bremsscheibe: 15000,
-  lenkerband: 3000
+  lenkerband: 3000,
+  innenlager: 15000,
+  steuersatz: 20000
 };
 
 // ── Verschleissteil Typen & Positionen ────────────────────────
-const VALID_TYPEN = ['mantel', 'schlauch', 'kette', 'kassette', 'kurbel', 'kettenblatt', 'schaltwerk', 'bremsbelag', 'bremsscheibe', 'zug', 'lenkerband', 'sonstiges'];
+const VALID_TYPEN = ['mantel', 'schlauch', 'kette', 'kassette', 'kurbel', 'kettenblatt', 'schaltwerk', 'umwerfer', 'innenlager', 'steuersatz', 'bremsbelag', 'bremsscheibe', 'zug', 'lenkerband', 'sonstiges'];
 const VALID_POSITIONEN = ['vorne', 'hinten', null];
 
 // ── SVG-Schema: Mapping Hotspot → Verschleissteil(e) ──────────
@@ -1189,7 +1202,8 @@ const SVG_KOMPONENTEN = [
 
 const TYP_LABEL = {
   mantel: 'Mantel', schlauch: 'Schlauch', kette: 'Kette', kassette: 'Kassette', kurbel: 'Kurbel',
-  kettenblatt: 'Kettenblatt', schaltwerk: 'Schaltwerk', bremsbelag: 'Bremsbelag',
+  kettenblatt: 'Kettenblatt', schaltwerk: 'Schaltwerk', umwerfer: 'Umwerfer',
+  innenlager: 'Innenlager', steuersatz: 'Steuersatz', bremsbelag: 'Bremsbelag',
   bremsscheibe: 'Bremsscheibe', zug: 'Zug', lenkerband: 'Lenkerband', sonstiges: 'Sonstiges'
 };
 
@@ -1197,6 +1211,92 @@ const SCHWERE_LABEL = { leicht: 'Leicht', schwer: 'Schwer' };
 
 // ── Mängel ─────────────────────────────────────────────────────
 const KATEGORIE_LABEL = { sicherheit: 'Sicherheit', funktion: 'Funktion', optik: 'Optik', sonstiges: 'Sonstiges' };
+
+// ── Komponenten-Katalog ────────────────────────────────────────
+// Vorschlagslisten je Typ für eine einheitliche Bezeichnung. Die Felder bleiben
+// Freitext – der Katalog schlägt nur vor. Eigene Bezeichnungen werden zur
+// Laufzeit ergänzt (siehe renderBezeichnungVorschlaege).
+// Schläuche folgen der ETRTO-Norm: <min>/<max>-<Felgendurchmesser>.
+const KOMPONENTEN_KATALOG = {
+  schlauch: [
+    '18/25-622', '18/28-622', '25/32-622', '28/47-622', '32/47-622', '40/62-622',
+    '40/60-584', '47/62-584',
+    '37/47-559', '47/62-559'
+  ],
+  mantel: [
+    'Schwalbe G-One Speed 40-622', 'Schwalbe G-One Allround 40-622',
+    'Schwalbe G-One Bite 45-622', 'Schwalbe G-One R 45-622',
+    'Continental Terra Trail 40-622', 'Continental Terra Speed 40-622',
+    'Continental Grand Prix 5000 32-622',
+    'Panaracer GravelKing SK 43-622', 'WTB Riddler 45-622',
+    'Pirelli Cinturato Gravel M 40-622'
+  ],
+  kette: [
+    'Shimano CN-HG601-11', 'Shimano CN-M7100 (12-fach)', 'Shimano CN-HG701-11',
+    'SRAM PC-1130', 'KMC X11', 'KMC X12'
+  ],
+  kassette: [
+    'Shimano CS-HG700-11 11-34', 'Shimano CS-M7100-12 10-51',
+    'Shimano CS-HG800-11 11-34', 'SRAM PG-1130 11-42'
+  ],
+  kurbel: [
+    'Shimano GRX FC-RX600-11 46/30', 'Shimano GRX FC-RX810-2 48/31',
+    'Shimano GRX FC-RX810-1 40T', 'Shimano FC-RS510 50/34'
+  ],
+  schaltwerk: [
+    'Shimano GRX RD-RX810', 'Shimano GRX RD-RX812', 'Shimano GRX RD-RX400',
+    'Shimano RD-R7000'
+  ],
+  umwerfer: [
+    'Shimano GRX FD-RX810 (Braze-on)', 'Shimano GRX FD-RX400', 'Shimano FD-R7000'
+  ],
+  innenlager: [
+    'Shimano BB-MT501 (BSA)', 'Shimano BB-RS500 (BSA)', 'Shimano BB-MT800 (BSA)',
+    'SRAM DUB (BSA)'
+  ],
+  steuersatz: [
+    'semi-integriert ZS44/ZS56', 'integriert IS42/IS52', 'semi-integriert ZS44/ZS44',
+    'Aussenliegend EC34/EC34'
+  ],
+  bremsbelag: [
+    'Shimano L03A Resin', 'Shimano L04C Metall', 'Shimano K02S Resin', 'SwissStop Disc 34 RS'
+  ],
+  bremsscheibe: [
+    'Shimano SM-RT70 160mm', 'Shimano SM-RT70 180mm',
+    'Shimano SM-RT800 160mm', 'Shimano RT-CL800 160mm'
+  ],
+  lenkerband: [
+    'Lizard Skins DSP 2.5', 'Fizik Tempo Microtex Bondcush', 'Supacaz Super Sticky Kush'
+  ]
+};
+
+// Vorbelegung der Ausstattung je Modell. Wird nur ins Formular geschrieben –
+// gespeichert wird erst, wenn du auf Speichern tippst.
+// "notizen" faengt auf, wofuer es keine eigenen Ausstattungsfelder gibt.
+const BIKE_PRESETS = {
+  'maxcycles-gravel-lite': {
+    label: 'Maxcycles Gravel Lite',
+    ausstattung: {
+      rahmen: 'Alu, Diamant, Gr. M/L, flaschengrün matt',
+      gabel: 'Carbon, starr, Steckachse',
+      schaltgruppe: 'Shimano GRX 2×11 – ST-RX810, RD-RX810, Umwerfer Braze-on, FC-RX600-11 46/30, Kassette 11-34, Kette 11-fach',
+      bremsen: 'Shimano BR-RX400, hydraulisch, Flat Mount, Center Lock',
+      laufraeder: 'Mach1 Alu ETRTO 622×19c, Naben Shimano HB-RS470 / FH-RS470, Center Lock, Steckachse, 28"',
+      sattel: 'Komfort-Modell',
+      lenker: 'Ergotec Gravel Dropbar, mit Lenkerband',
+      vorbau: 'Humpert Ergotec, 31,8 mm'
+    },
+    notizen: [
+      'Steuersatz: semi-integriert',
+      'Innenlager: Shimano BB-MT501, BSA',
+      'Sattelstütze: 27,2 mm',
+      'Reifen: Schwalbe G-One Speed, Faltreifen (Breite prüfen)',
+      'Anbauteile: Gepäckträger hinten, Schutzbleche vorne + hinten, Seitenständer, Rücklicht (Batterie/Akku), Plattformpedale',
+      '',
+      'Noch zu prüfen: Kurbellänge (Innenseite linker Kurbelarm), Scheibendurchmesser vorne (vermutlich 180 mm, hinten 160 mm).'
+    ].join('\n')
+  }
+};
 
 // ── IndexedDB ──────────────────────────────────────────────────
 let _db = null;
@@ -1698,6 +1798,30 @@ function renderBike() {
   // Mängel Count
   const offenCount = state.maengel?.filter(m => m.status === 'offen').length || 0;
   document.getElementById('maengel-count').textContent = `${offenCount} offen`;
+
+  // Preset-Auswahl befüllen (Auswahl selbst wird nicht gespeichert)
+  const presetSelect = document.getElementById('b-preset');
+  presetSelect.innerHTML = ['<option value="">– Modell wählen –</option>']
+    .concat(Object.entries(BIKE_PRESETS).map(([key, p]) => `<option value="${key}">${p.label}</option>`))
+    .join('');
+}
+
+/** Schreibt eine Modell-Vorlage in die Ausstattungsfelder (nur ins Formular, nicht in den State) */
+function applyBikePreset(key) {
+  const preset = BIKE_PRESETS[key];
+  if (!preset) return;
+
+  Object.entries(preset.ausstattung).forEach(([feld, wert]) => {
+    const el = document.getElementById(`b-ausstattung-${feld}`);
+    // Bereits ausgefüllte Felder nicht überschreiben
+    if (el && !el.value.trim()) el.value = wert;
+  });
+
+  // Was kein eigenes Feld hat, landet in den Notizen – ebenfalls nur wenn leer
+  const notizEl = document.getElementById('b-notizen');
+  if (preset.notizen && !notizEl.value.trim()) notizEl.value = preset.notizen;
+
+  showToast('Vorlage eingetragen. Bitte prüfen und speichern.');
 }
 
 function updateBikePhoto(dataUrl) {
@@ -1846,6 +1970,7 @@ function openVerschleissteilForm(vt = null) {
 
   renderSchlauchInfo(vt);
   renderVtMaengel(vt);
+  renderBezeichnungVorschlaege(vt?.typ || '');
 
   showView('view-verschleissteil-form');
 }
@@ -1870,6 +1995,21 @@ function renderVtMaengel(vt) {
         <div class="settings-row-sub">${m.erstelltAm} · <strong>${KATEGORIE_LABEL[m.kategorie] || m.kategorie}</strong> · ${m.status === 'offen' ? 'offen' : 'erledigt'} · ${m.beschreibung}</div>
       `).join('')
     : '<div class="settings-row-sub">Noch keine Mängel gemeldet.</div>';
+}
+
+/** Füllt die Vorschlagsliste für die Bezeichnung: Katalog + bereits selbst verwendete Namen */
+function renderBezeichnungVorschlaege(typ) {
+  const katalog = KOMPONENTEN_KATALOG[typ] || [];
+
+  // Eigene Bezeichnungen desselben Typs ergänzen, damit Schreibweisen konsistent bleiben
+  const eigene = state.verschleissteile
+    .filter(v => v.typ === typ && v.bezeichnung)
+    .map(v => v.bezeichnung);
+
+  const alle = [...new Set([...katalog, ...eigene])].sort((a, b) => a.localeCompare(b, 'de'));
+
+  document.getElementById('vt-bezeichnung-liste').innerHTML =
+    alle.map(b => `<option value="${b.replace(/"/g, '&quot;')}"></option>`).join('');
 }
 
 /** Zeigt bei Schläuchen die Mantel-Verknüpfung und Loch-Historie an */
@@ -2512,6 +2652,10 @@ function bindEvents() {
   document.getElementById('btn-bike-back').addEventListener('click', () => showView('view-home'));
   document.getElementById('btn-verschleissteile').addEventListener('click', () => { renderVerschleissteile(); showView('view-verschleissteile'); });
   document.getElementById('btn-maengel').addEventListener('click', () => { renderMaengel(); showView('view-maengel'); });
+  document.getElementById('b-preset').addEventListener('change', (e) => {
+    applyBikePreset(e.target.value);
+    e.target.value = '';
+  });
 
   const photoArea  = document.getElementById('photo-area');
   const fotoInput  = document.getElementById('bike-foto-input');
@@ -2597,6 +2741,7 @@ function bindEvents() {
     const id = document.getElementById('vt-id').value;
     const existing = id ? state.verschleissteile.find(v => v.id === id) : null;
     renderSchlauchInfo(existing && existing.typ === e.target.value ? existing : null);
+    renderBezeichnungVorschlaege(e.target.value);
   });
 
   // Bike-Schema-View

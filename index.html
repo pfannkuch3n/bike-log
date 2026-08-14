@@ -1233,6 +1233,14 @@ const KOMPONENTEN_KATALOG = {
     'Shimano CS-HG700-11 11-34', 'Shimano CS-M7100-12 10-51',
     'Shimano CS-HG800-11 11-34', 'SRAM PG-1130 11-42'
   ],
+  kurbel: [
+    'Shimano GRX FC-RX600-11 46/30', 'Shimano GRX FC-RX810-2 48/31',
+    'Shimano GRX FC-RX810-1 40T', 'Shimano FC-RS510 50/34'
+  ],
+  schaltwerk: [
+    'Shimano GRX RD-RX810', 'Shimano GRX RD-RX812', 'Shimano GRX RD-RX400',
+    'Shimano RD-R7000'
+  ],
   bremsbelag: [
     'Shimano L03A Resin', 'Shimano L04C Metall', 'Shimano K02S Resin', 'SwissStop Disc 34 RS'
   ],
@@ -1247,19 +1255,28 @@ const KOMPONENTEN_KATALOG = {
 
 // Vorbelegung der Ausstattung je Modell. Wird nur ins Formular geschrieben –
 // gespeichert wird erst, wenn du auf Speichern tippst.
+// "notizen" faengt auf, wofuer es keine eigenen Ausstattungsfelder gibt.
 const BIKE_PRESETS = {
   'maxcycles-gravel-lite': {
     label: 'Maxcycles Gravel Lite',
     ausstattung: {
-      rahmen: 'Maxcycles Gravel Lite, Aluminium',
-      gabel: 'Carbon',
-      schaltgruppe: 'Shimano GRX 810/600',
-      bremsen: 'Shimano GRX 600 Scheibenbremse',
-      laufraeder: 'Mach 1 Cross R-23, Shimano Naben, 28"',
-      sattel: '',
-      lenker: '',
-      vorbau: ''
-    }
+      rahmen: 'Alu, Diamant, Gr. M/L, flaschengrün matt',
+      gabel: 'Carbon, starr, Steckachse',
+      schaltgruppe: 'Shimano GRX 2×11 – ST-RX810, RD-RX810, Umwerfer Braze-on, FC-RX600-11 46/30, Kassette 11-34',
+      bremsen: 'Shimano BR-RX400, hydraulisch, Flat Mount, Center Lock',
+      laufraeder: 'Mach1 Alu ETRTO 622×19c, Naben Shimano HB-RS470 / FH-RS470, Center Lock, Steckachse, 28"',
+      sattel: 'Komfort-Modell',
+      lenker: 'Ergotec Gravel Dropbar, mit Lenkerband',
+      vorbau: 'Humpert Ergotec, 31,8 mm'
+    },
+    notizen: [
+      'Steuersatz: semi-integriert',
+      'Innenlager: Shimano BB-MT501, BSA',
+      'Sattelstütze: 27,2 mm',
+      'Anbauteile: Gepäckträger hinten, Schutzbleche vorne + hinten, Seitenständer, Rücklicht (Batterie/Akku), Plattformpedale',
+      '',
+      'Noch zu prüfen: Kurbellänge (Innenseite linker Kurbelarm), Scheibendurchmesser vorne (vermutlich 180 mm, hinten 160 mm).'
+    ].join('\n')
   }
 };
 
@@ -1781,6 +1798,10 @@ function applyBikePreset(key) {
     // Bereits ausgefüllte Felder nicht überschreiben
     if (el && !el.value.trim()) el.value = wert;
   });
+
+  // Was kein eigenes Feld hat, landet in den Notizen – ebenfalls nur wenn leer
+  const notizEl = document.getElementById('b-notizen');
+  if (preset.notizen && !notizEl.value.trim()) notizEl.value = preset.notizen;
 
   showToast('Vorlage eingetragen. Bitte prüfen und speichern.');
 }

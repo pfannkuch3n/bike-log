@@ -799,6 +799,9 @@ textarea { resize: vertical; min-height: 80px; }
             <option value="kurbel">Kurbel</option>
             <option value="kettenblatt">Kettenblatt</option>
             <option value="schaltwerk">Schaltwerk</option>
+            <option value="umwerfer">Umwerfer</option>
+            <option value="innenlager">Innenlager</option>
+            <option value="steuersatz">Steuersatz</option>
             <option value="bremsbelag">Bremsbelag</option>
             <option value="bremsscheibe">Bremsscheibe</option>
             <option value="zug">Zug (Schalt/Brems)</option>
@@ -1167,11 +1170,13 @@ const DEFAULT_ERWARTETE_KM = {
   kassette: 9000,
   bremsbelag: 2000,
   bremsscheibe: 15000,
-  lenkerband: 3000
+  lenkerband: 3000,
+  innenlager: 15000,
+  steuersatz: 20000
 };
 
 // ── Verschleissteil Typen & Positionen ────────────────────────
-const VALID_TYPEN = ['mantel', 'schlauch', 'kette', 'kassette', 'kurbel', 'kettenblatt', 'schaltwerk', 'bremsbelag', 'bremsscheibe', 'zug', 'lenkerband', 'sonstiges'];
+const VALID_TYPEN = ['mantel', 'schlauch', 'kette', 'kassette', 'kurbel', 'kettenblatt', 'schaltwerk', 'umwerfer', 'innenlager', 'steuersatz', 'bremsbelag', 'bremsscheibe', 'zug', 'lenkerband', 'sonstiges'];
 const VALID_POSITIONEN = ['vorne', 'hinten', null];
 
 // ── SVG-Schema: Mapping Hotspot → Verschleissteil(e) ──────────
@@ -1197,7 +1202,8 @@ const SVG_KOMPONENTEN = [
 
 const TYP_LABEL = {
   mantel: 'Mantel', schlauch: 'Schlauch', kette: 'Kette', kassette: 'Kassette', kurbel: 'Kurbel',
-  kettenblatt: 'Kettenblatt', schaltwerk: 'Schaltwerk', bremsbelag: 'Bremsbelag',
+  kettenblatt: 'Kettenblatt', schaltwerk: 'Schaltwerk', umwerfer: 'Umwerfer',
+  innenlager: 'Innenlager', steuersatz: 'Steuersatz', bremsbelag: 'Bremsbelag',
   bremsscheibe: 'Bremsscheibe', zug: 'Zug', lenkerband: 'Lenkerband', sonstiges: 'Sonstiges'
 };
 
@@ -1240,6 +1246,17 @@ const KOMPONENTEN_KATALOG = {
   schaltwerk: [
     'Shimano GRX RD-RX810', 'Shimano GRX RD-RX812', 'Shimano GRX RD-RX400',
     'Shimano RD-R7000'
+  ],
+  umwerfer: [
+    'Shimano GRX FD-RX810 (Braze-on)', 'Shimano GRX FD-RX400', 'Shimano FD-R7000'
+  ],
+  innenlager: [
+    'Shimano BB-MT501 (BSA)', 'Shimano BB-RS500 (BSA)', 'Shimano BB-MT800 (BSA)',
+    'SRAM DUB (BSA)'
+  ],
+  steuersatz: [
+    'semi-integriert ZS44/ZS56', 'integriert IS42/IS52', 'semi-integriert ZS44/ZS44',
+    'Aussenliegend EC34/EC34'
   ],
   bremsbelag: [
     'Shimano L03A Resin', 'Shimano L04C Metall', 'Shimano K02S Resin', 'SwissStop Disc 34 RS'

@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const CACHE_NAME = `bike-log-${CACHE_VERSION}`;
 
 const APP_SHELL = [

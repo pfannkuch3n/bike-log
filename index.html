@@ -830,7 +830,8 @@ textarea { resize: vertical; min-height: 80px; }
           </select>
           <input type="hidden" id="vt-bezeichnung" />
           <div id="vt-neu-box" hidden style="margin-top:10px">
-            <input id="vt-neu-marke" type="text" placeholder="Marke, z.B. Shimano" autocomplete="off" />
+            <select id="vt-neu-marke-select"></select>
+            <input id="vt-neu-marke" type="text" placeholder="Marke eingeben" autocomplete="off" style="margin-top:8px" hidden />
             <input id="vt-neu-modell" type="text" placeholder="Modell, z.B. GRX RD-RX810" autocomplete="off" style="margin-top:8px" />
             <input id="vt-neu-groesse" type="text" placeholder="Größe / Spezifikation (optional)" autocomplete="off" style="margin-top:8px" />
             <button type="button" class="btn btn-secondary" id="vt-neu-uebernehmen" style="margin-top:8px">Komponente hinzufügen</button>
@@ -964,8 +965,9 @@ textarea { resize: vertical; min-height: 80px; }
           <select id="k-typ" required></select>
         </div>
         <div class="field">
-          <label for="k-marke">Marke</label>
-          <input id="k-marke" type="text" placeholder="z.B. Shimano" autocomplete="off" />
+          <label for="k-marke-select">Marke</label>
+          <select id="k-marke-select"></select>
+          <input id="k-marke" type="text" placeholder="Marke eingeben" autocomplete="off" style="margin-top:8px" hidden />
         </div>
         <div class="field">
           <label for="k-modell">Modell</label>
@@ -1222,7 +1224,7 @@ const DB_NAME        = 'bike-log';
 const DB_VERSION     = 2;
 const STORE          = 'data';
 const DATA_KEY       = 'main';
-const APP_VERSION    = '2.4.0';
+const APP_VERSION    = '2.5.0';
 const SCHEMA_VERSION = 6;
 const BACKUP_DAYS    = 7;
 
@@ -1647,6 +1649,57 @@ function sortedVerschleissteile() {
 // Sonderwerte des Dropdowns, abgegrenzt von echten Katalog-IDs (UUIDs)
 const BEZ_NEU = '__neue_komponente__';
 const BEZ_UEBERNOMMEN = '__uebernommen__';
+const MARKE_ANDERE = '__andere_marke__';
+
+// Gaengige Hersteller als Auswahl, damit die Schreibweise einheitlich bleibt.
+// Selbst eingetragene Marken kommen zur Laufzeit dazu (siehe alleMarken).
+const MARKEN = [
+  'Acros', 'Brooks', 'Campagnolo', 'Cane Creek', 'Continental', 'DT Swiss',
+  'Ergon', 'Ergotec', 'Fizik', 'FSA', 'Fulcrum', 'Galfer', 'Hope', 'Humpert',
+  'KMC', 'Lizard Skins', 'Mach1', 'Magura', 'Mavic', 'Maxxis', 'Michelin',
+  'Panaracer', 'Pirelli', 'PRO', 'Ritchey', 'Rotor', 'Schwalbe', 'Selle Italia',
+  'Shimano', 'SRAM', 'Supacaz', 'SwissStop', 'TRP', 'Vittoria', 'Wolf Tooth', 'WTB'
+];
+
+/** Standardmarken plus alles, was im Katalog schon verwendet wird */
+function alleMarken() {
+  const ausKatalog = state.katalog.map(e => e.marke).filter(Boolean);
+  return [...new Set([...MARKEN, ...ausKatalog])].sort((a, b) => a.localeCompare(b, 'de'));
+}
+
+/** Befüllt ein Marken-Dropdown; unbekannte Marken landen im Freitextfeld dahinter */
+function renderMarkenAuswahl(selectId, inputId, aktuelleMarke = '') {
+  const select = document.getElementById(selectId);
+  const input = document.getElementById(inputId);
+  const marken = alleMarken();
+
+  select.innerHTML = '<option value="">– keine –</option>'
+    + marken.map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('')
+    + `<option value="${MARKE_ANDERE}">+ andere Marke …</option>`;
+
+  const bekannt = !aktuelleMarke || marken.includes(aktuelleMarke);
+  select.value = bekannt ? (aktuelleMarke || '') : MARKE_ANDERE;
+  input.value = bekannt ? '' : aktuelleMarke;
+  input.hidden = bekannt;
+}
+
+/** Liest die Marke aus Dropdown bzw. Freitextfeld */
+function getMarkeAusAuswahl(selectId, inputId) {
+  const wert = document.getElementById(selectId).value;
+  if (wert === MARKE_ANDERE) return document.getElementById(inputId).value.trim();
+  return wert;
+}
+
+/** Schaltet das Freitextfeld ein, wenn "andere Marke" gewählt wurde */
+function markenAuswahlGeaendert(selectId, inputId) {
+  const istAndere = document.getElementById(selectId).value === MARKE_ANDERE;
+  const input = document.getElementById(inputId);
+  input.hidden = !istAndere;
+  if (istAndere) {
+    input.value = '';
+    setTimeout(() => input.focus(), 50);
+  }
+}
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c =>
@@ -2129,10 +2182,11 @@ function renderBezeichnungAuswahl(typ, aktuelleBezeichnung = '') {
 function zeigeNeueKomponenteFelder(sichtbar) {
   document.getElementById('vt-neu-box').hidden = !sichtbar;
   if (!sichtbar) return;
-  ['vt-neu-marke', 'vt-neu-modell', 'vt-neu-groesse'].forEach(id => {
+  ['vt-neu-modell', 'vt-neu-groesse'].forEach(id => {
     document.getElementById(id).value = '';
   });
-  setTimeout(() => document.getElementById('vt-neu-marke').focus(), 50);
+  renderMarkenAuswahl('vt-neu-marke-select', 'vt-neu-marke');
+  setTimeout(() => document.getElementById('vt-neu-modell').focus(), 50);
 }
 
 /** Legt die im Formular eingegebene Komponente im Katalog an und wählt sie aus */
@@ -2145,7 +2199,7 @@ async function neueKomponenteUebernehmen() {
 
   const eintrag = {
     typ,
-    marke: document.getElementById('vt-neu-marke').value.trim(),
+    marke: getMarkeAusAuswahl('vt-neu-marke-select', 'vt-neu-marke'),
     modell: document.getElementById('vt-neu-modell').value.trim(),
     groesse: document.getElementById('vt-neu-groesse').value.trim()
   };
@@ -2613,7 +2667,7 @@ function openKatalogForm(eintrag = null) {
     .map(t => `<option value="${t}">${escapeHtml(TYP_LABEL[t] || t)}</option>`).join('');
   document.getElementById('k-typ').value = eintrag?.typ || 'mantel';
   document.getElementById('k-id').value = eintrag?.id || '';
-  document.getElementById('k-marke').value = eintrag?.marke || '';
+  renderMarkenAuswahl('k-marke-select', 'k-marke', eintrag?.marke || '');
   document.getElementById('k-modell').value = eintrag?.modell || '';
   document.getElementById('k-groesse').value = eintrag?.groesse || '';
 
@@ -2632,7 +2686,7 @@ async function saveKatalogEintrag(e) {
   const id = document.getElementById('k-id').value;
   const daten = {
     typ: document.getElementById('k-typ').value,
-    marke: document.getElementById('k-marke').value.trim(),
+    marke: getMarkeAusAuswahl('k-marke-select', 'k-marke'),
     modell: document.getElementById('k-modell').value.trim(),
     groesse: document.getElementById('k-groesse').value.trim()
   };
@@ -3053,6 +3107,10 @@ function bindEvents() {
     zeigeNeueKomponenteFelder(e.target.value === BEZ_NEU);
   });
   document.getElementById('vt-neu-uebernehmen').addEventListener('click', neueKomponenteUebernehmen);
+  document.getElementById('vt-neu-marke-select').addEventListener('change',
+    () => markenAuswahlGeaendert('vt-neu-marke-select', 'vt-neu-marke'));
+  document.getElementById('k-marke-select').addEventListener('change',
+    () => markenAuswahlGeaendert('k-marke-select', 'k-marke'));
 
   // Bike-Schema-View
   document.getElementById('btn-bike-schema').addEventListener('click', () => { _schemaOrigin = 'view-bike'; renderBikeSchema(); showView('view-bike-schema'); });

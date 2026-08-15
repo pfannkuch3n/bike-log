@@ -717,6 +717,12 @@ textarea { resize: vertical; min-height: 80px; }
           <span class="settings-row-sub" id="maengel-count">0 offen</span>
           <span class="settings-row-chevron">›</span>
         </button>
+        <button class="settings-row tappable" id="btn-katalog" type="button">
+          <span class="settings-row-icon">📚</span>
+          <span class="settings-row-label">Komponenten-Katalog</span>
+          <span class="settings-row-sub" id="katalog-count">0 Einträge</span>
+          <span class="settings-row-chevron">›</span>
+        </button>
       </div>
     </div>
   </div>
@@ -923,6 +929,56 @@ textarea { resize: vertical; min-height: 80px; }
         <button type="submit" class="btn btn-primary">Speichern</button>
         <button type="button" class="btn btn-secondary" id="m-erledigt-btn" hidden>Als erledigt markieren</button>
         <button type="button" class="btn btn-danger" id="m-delete-btn" hidden>Löschen</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Komponenten-Katalog ──────────────────────────────────── -->
+  <div class="view" id="view-katalog">
+    <div class="topbar">
+      <button class="icon-btn" id="btn-katalog-back" aria-label="Zurück">←</button>
+      <h1>Komponenten-Katalog</h1>
+    </div>
+    <div class="content" style="padding-top:8px">
+      <div class="settings-group" style="margin-bottom:16px">
+        <button class="settings-row tappable" id="btn-neue-katalog-komponente" type="button">
+          <span class="settings-row-icon">➕</span>
+          <span class="settings-row-label">Komponente hinzufügen</span>
+          <span class="settings-row-chevron">›</span>
+        </button>
+      </div>
+      <div id="katalog-list"></div>
+    </div>
+  </div>
+
+  <!-- ── Katalog-Formular ─────────────────────────────────────── -->
+  <div class="view" id="view-katalog-form">
+    <div class="topbar">
+      <button class="icon-btn" id="btn-katalog-form-back" aria-label="Zurück">←</button>
+      <h1 id="katalog-form-title">Neue Komponente</h1>
+    </div>
+    <div class="content" style="padding-top:8px">
+      <form id="katalog-form">
+        <div class="field">
+          <label for="k-typ">Typ *</label>
+          <select id="k-typ" required></select>
+        </div>
+        <div class="field">
+          <label for="k-marke">Marke</label>
+          <input id="k-marke" type="text" placeholder="z.B. Shimano" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="k-modell">Modell</label>
+          <input id="k-modell" type="text" placeholder="z.B. GRX RD-RX810" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="k-groesse">Größe / Spezifikation</label>
+          <input id="k-groesse" type="text" placeholder="z.B. 45-622" autocomplete="off" />
+        </div>
+        <p class="settings-row-sub" id="k-verwendung"></p>
+        <input type="hidden" id="k-id" />
+        <button type="submit" class="btn btn-primary">Speichern</button>
+        <button type="button" class="btn btn-danger" id="k-delete-btn" hidden>Löschen</button>
       </form>
     </div>
   </div>
@@ -1166,8 +1222,8 @@ const DB_NAME        = 'bike-log';
 const DB_VERSION     = 2;
 const STORE          = 'data';
 const DATA_KEY       = 'main';
-const APP_VERSION    = '2.3.0';
-const SCHEMA_VERSION = 5;
+const APP_VERSION    = '2.4.0';
+const SCHEMA_VERSION = 6;
 const BACKUP_DAYS    = 7;
 
 // ── Verschleissteil Defaults ──────────────────────────────────
@@ -1237,7 +1293,7 @@ const KATALOG_DEFAULTS = [
   { typ: 'bremsbelag',   marke: 'Shimano', modell: 'für BR-RX400',    groesse: '' },
   { typ: 'bremsscheibe', marke: 'Shimano', modell: 'Center Lock',     groesse: '160 mm' },
   { typ: 'bremsscheibe', marke: 'Shimano', modell: 'Center Lock',     groesse: '180 mm' },
-  { typ: 'mantel',       marke: 'Schwalbe', modell: 'G-One Speed',    groesse: 'Faltreifen' },
+  { typ: 'mantel',       marke: 'Schwalbe', modell: 'G-One Speed',    groesse: '45-622 (Faltreifen)' },
   { typ: 'lenkerband',   marke: 'Ergotec', modell: '',                groesse: '' },
   // Schlaeuche nach ETRTO: <min>/<max>-<Felgendurchmesser>.
   // 622 = 28"/700c, passend zur Felge Mach1 622x19c.
@@ -1269,7 +1325,7 @@ const BIKE_PRESETS = {
       'Steuersatz: semi-integriert',
       'Innenlager: Shimano BB-MT501, BSA',
       'Sattelstütze: 27,2 mm',
-      'Reifen: Schwalbe G-One Speed, Faltreifen (Breite prüfen)',
+      'Reifen: Schwalbe G-One Speed 45-622, Faltreifen',
       'Anbauteile: Gepäckträger hinten, Schutzbleche vorne + hinten, Seitenständer, Rücklicht (Batterie/Akku), Plattformpedale',
       '',
       'Noch zu prüfen: Kurbellänge (Innenseite linker Kurbelarm), Scheibendurchmesser vorne (vermutlich 180 mm, hinten 160 mm).'
@@ -1344,12 +1400,26 @@ function migrateV4toV5(oldState) {
   return newState;
 }
 
+// ── Migration v5 → v6 ────────────────────────────────────────
+// Der Mantel wurde ohne Breite ausgeliefert. Nur den unveraenderten
+// Seed-Eintrag korrigieren – selbst angepasste Eintraege bleiben, wie sie sind.
+function migrateV5toV6(oldState) {
+  const newState = { ...oldState, schemaVersion: 6 };
+  newState.katalog = (oldState.katalog || []).map(e =>
+    (e.typ === 'mantel' && e.marke === 'Schwalbe' && e.modell === 'G-One Speed' && e.groesse === 'Faltreifen')
+      ? { ...e, groesse: '45-622 (Faltreifen)' }
+      : e
+  );
+  return newState;
+}
+
 function migrateState(oldState) {
   let state = oldState;
   if (state.schemaVersion < 2) state = migrateV1toV2(state);
   if (state.schemaVersion < 3) state = migrateV2toV3(state);
   if (state.schemaVersion < 4) state = migrateV3toV4(state);
   if (state.schemaVersion < 5) state = migrateV4toV5(state);
+  if (state.schemaVersion < 6) state = migrateV5toV6(state);
 
   if (state !== oldState) {
     state.meta = { ...oldState.meta, appVersion: APP_VERSION };
@@ -1828,6 +1898,10 @@ function renderBike() {
   // Mängel Count
   const offenCount = state.maengel?.filter(m => m.status === 'offen').length || 0;
   document.getElementById('maengel-count').textContent = `${offenCount} offen`;
+
+  // Katalog Count
+  const katalogCount = state.katalog?.length || 0;
+  document.getElementById('katalog-count').textContent = `${katalogCount} Eintr${katalogCount === 1 ? 'ag' : 'äge'}`;
 
   // Preset-Auswahl befüllen (Auswahl selbst wird nicht gespeichert)
   const presetSelect = document.getElementById('b-preset');
@@ -2500,6 +2574,125 @@ async function deleteMangel() {
   }
 }
 
+// ── Katalog UI ─────────────────────────────────────────────────
+
+function renderKatalog() {
+  const listEl = document.getElementById('katalog-list');
+
+  if (state.katalog.length === 0) {
+    listEl.innerHTML = '<p class="empty-state">Noch keine Komponenten im Katalog.</p>';
+    return;
+  }
+
+  // Nach Typ gruppieren, Reihenfolge wie im Verschleissteil-Dropdown
+  const typen = VALID_TYPEN.filter(t => state.katalog.some(e => e.typ === t));
+  listEl.innerHTML = typen.map(typ => {
+    const eintraege = katalogFuerTyp(typ);
+    return `<p class="section-title" style="margin-top:16px">${escapeHtml(TYP_LABEL[typ] || typ)} (${eintraege.length})</p>`
+      + `<div class="settings-group" style="margin-bottom:8px">`
+      + eintraege.map(e => `
+          <button class="settings-row tappable" data-id="${e.id}" type="button">
+            <span class="settings-row-label">${escapeHtml(katalogLabel(e))}</span>
+            <span class="settings-row-chevron">›</span>
+          </button>`).join('')
+      + `</div>`;
+  }).join('');
+}
+
+/** Zählt, wie viele Verschleissteile diese Komponente aktuell tragen */
+function katalogVerwendung(eintrag) {
+  const label = katalogLabel(eintrag);
+  return state.verschleissteile.filter(v => v.bezeichnung === label).length;
+}
+
+function openKatalogForm(eintrag = null) {
+  const isNew = !eintrag;
+
+  document.getElementById('katalog-form-title').textContent = isNew ? 'Neue Komponente' : 'Komponente bearbeiten';
+  document.getElementById('k-typ').innerHTML = VALID_TYPEN
+    .map(t => `<option value="${t}">${escapeHtml(TYP_LABEL[t] || t)}</option>`).join('');
+  document.getElementById('k-typ').value = eintrag?.typ || 'mantel';
+  document.getElementById('k-id').value = eintrag?.id || '';
+  document.getElementById('k-marke').value = eintrag?.marke || '';
+  document.getElementById('k-modell').value = eintrag?.modell || '';
+  document.getElementById('k-groesse').value = eintrag?.groesse || '';
+
+  const verwendung = isNew ? 0 : katalogVerwendung(eintrag);
+  document.getElementById('k-verwendung').textContent = isNew ? ''
+    : verwendung === 0 ? 'Wird aktuell von keinem Verschleissteil verwendet.'
+    : `Wird von ${verwendung} Verschleissteil${verwendung === 1 ? '' : 'en'} verwendet. Beim Umbenennen behalten diese ihre bisherige Bezeichnung.`;
+
+  document.getElementById('k-delete-btn').hidden = isNew;
+  showView('view-katalog-form');
+}
+
+async function saveKatalogEintrag(e) {
+  e.preventDefault();
+
+  const id = document.getElementById('k-id').value;
+  const daten = {
+    typ: document.getElementById('k-typ').value,
+    marke: document.getElementById('k-marke').value.trim(),
+    modell: document.getElementById('k-modell').value.trim(),
+    groesse: document.getElementById('k-groesse').value.trim()
+  };
+
+  if (!katalogLabel(daten)) {
+    showToast('Bitte mindestens Marke, Modell oder Größe angeben.', 'error');
+    return;
+  }
+
+  const doppelt = state.katalog.some(x =>
+    x.id !== id && x.typ === daten.typ && katalogLabel(x) === katalogLabel(daten));
+  if (doppelt) {
+    showToast('Diese Komponente gibt es in diesem Typ bereits.', 'error');
+    return;
+  }
+
+  if (id) {
+    const idx = state.katalog.findIndex(x => x.id === id);
+    if (idx !== -1) state.katalog[idx] = { ...state.katalog[idx], ...daten };
+  } else {
+    addKatalogEintrag(daten);
+  }
+
+  try {
+    await dbSave(state);
+    renderKatalog();
+    showToast(id ? 'Komponente aktualisiert.' : 'Komponente hinzugefügt.');
+    showView('view-katalog');
+  } catch (err) {
+    showToast('Fehler beim Speichern: ' + err.message, 'error');
+  }
+}
+
+async function deleteKatalogEintrag() {
+  const id = document.getElementById('k-id').value;
+  if (!id) return;
+
+  const eintrag = state.katalog.find(x => x.id === id);
+  if (!eintrag) return;
+
+  const verwendung = katalogVerwendung(eintrag);
+  const zusatz = verwendung > 0
+    ? ` ${verwendung} Verschleissteil${verwendung === 1 ? '' : 'e'} tr${verwendung === 1 ? 'ägt' : 'agen'} diese Bezeichnung und behält sie – nur die Auswahlmöglichkeit entfällt.`
+    : '';
+  const ok = await showConfirm('Komponente löschen?',
+    `"${katalogLabel(eintrag)}" wird aus dem Katalog entfernt.${zusatz}`);
+  if (!ok) return;
+
+  state.katalog = state.katalog.filter(x => x.id !== id);
+
+  try {
+    await dbSave(state);
+    renderKatalog();
+    showToast('Komponente gelöscht.');
+    showView('view-katalog');
+  } catch (err) {
+    showToast('Fehler beim Löschen: ' + err.message, 'error');
+  }
+}
+
 // ── Bike-Schema (SVG) ──────────────────────────────────────────
 let _schemaRenderedDecor = false;
 let _schemaOrigin = 'view-home';
@@ -2748,6 +2941,20 @@ function bindEvents() {
   document.getElementById('btn-bike-back').addEventListener('click', () => showView('view-home'));
   document.getElementById('btn-verschleissteile').addEventListener('click', () => { renderVerschleissteile(); showView('view-verschleissteile'); });
   document.getElementById('btn-maengel').addEventListener('click', () => { renderMaengel(); showView('view-maengel'); });
+  document.getElementById('btn-katalog').addEventListener('click', () => { renderKatalog(); showView('view-katalog'); });
+
+  // Komponenten-Katalog
+  document.getElementById('btn-katalog-back').addEventListener('click', () => { renderBike(); showView('view-bike'); });
+  document.getElementById('btn-neue-katalog-komponente').addEventListener('click', () => openKatalogForm());
+  document.getElementById('btn-katalog-form-back').addEventListener('click', () => { renderKatalog(); showView('view-katalog'); });
+  document.getElementById('katalog-form').addEventListener('submit', saveKatalogEintrag);
+  document.getElementById('k-delete-btn').addEventListener('click', deleteKatalogEintrag);
+  document.getElementById('katalog-list').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-id]');
+    if (!btn) return;
+    const eintrag = state.katalog.find(x => x.id === btn.dataset.id);
+    if (eintrag) openKatalogForm(eintrag);
+  });
   document.getElementById('b-preset').addEventListener('change', (e) => {
     applyBikePreset(e.target.value);
     e.target.value = '';

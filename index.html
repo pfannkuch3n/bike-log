@@ -750,7 +750,7 @@ textarea { resize: vertical; min-height: 80px; }
         <div class="settings-group">
           <div class="settings-row">
             <span class="settings-row-label">Version</span>
-            <span class="settings-row-sub" id="app-version-label">2.0.0</span>
+            <span class="settings-row-sub" id="app-version-label">–</span>
           </div>
           <div class="settings-row">
             <span class="settings-row-label">Fahrten gesamt</span>
@@ -1158,7 +1158,7 @@ const DB_NAME        = 'bike-log';
 const DB_VERSION     = 2;
 const STORE          = 'data';
 const DATA_KEY       = 'main';
-const APP_VERSION    = '2.1.0';
+const APP_VERSION    = '2.2.0';
 const SCHEMA_VERSION = 4;
 const BACKUP_DAYS    = 7;
 
@@ -1895,7 +1895,9 @@ function renderSettings() {
     : days === 0 ? 'Heute'
     : `vor ${days} Tag${days === 1 ? '' : 'en'}`;
   document.getElementById('settings-count').textContent = String(state.fahrten.length);
-  document.getElementById('app-version-label').textContent = state.meta.appVersion ?? APP_VERSION;
+  // Immer die laufende Code-Version zeigen. state.meta.appVersion ist der Stand,
+  // unter dem zuletzt gespeichert wurde, und taugt nicht als Update-Anzeige.
+  document.getElementById('app-version-label').textContent = APP_VERSION;
 }
 
 // ── Verschleissteile UI ────────────────────────────────────────
@@ -2795,6 +2797,12 @@ async function init() {
   if (!state) {
     showView('view-onboarding');
   } else {
+    // Gespeicherte Version nachziehen, damit Exporte den Stand tragen, unter dem
+    // sie erzeugt wurden. Migrationen tun das nur, wenn sich das Schema aendert.
+    if (state.meta.appVersion !== APP_VERSION) {
+      state.meta.appVersion = APP_VERSION;
+      dbSave(state).catch(() => {}); // rein kosmetisch, Startvorgang nicht blockieren
+    }
     renderHome();
     showView('view-home');
   }

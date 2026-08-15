@@ -819,8 +819,10 @@ textarea { resize: vertical; min-height: 80px; }
         </div>
         <div class="field">
           <label for="vt-bezeichnung">Bezeichnung</label>
-          <input id="vt-bezeichnung" type="text" list="vt-bezeichnung-liste" placeholder="z.B. Schwalbe G-One R 45-622" autocomplete="off" />
-          <datalist id="vt-bezeichnung-liste"></datalist>
+          <select id="vt-bezeichnung-select">
+            <option value="">– keine –</option>
+          </select>
+          <input id="vt-bezeichnung" type="text" placeholder="Bezeichnung eingeben" autocomplete="off" style="margin-top:8px" hidden />
         </div>
         <div class="field">
           <label for="vt-eingebautAm">Eingebaut am *</label>
@@ -1217,56 +1219,25 @@ const KATEGORIE_LABEL = { sicherheit: 'Sicherheit', funktion: 'Funktion', optik:
 // Freitext – der Katalog schlägt nur vor. Eigene Bezeichnungen werden zur
 // Laufzeit ergänzt (siehe renderBezeichnungVorschlaege).
 // Schläuche folgen der ETRTO-Norm: <min>/<max>-<Felgendurchmesser>.
+// Standardkatalog = die tatsaechlich am Gravel Lite verbauten Teile.
+// Was hier nicht steht, wird ueber "andere ..." erfasst und ist danach
+// automatisch mit auswaehlbar (siehe renderBezeichnungAuswahl).
 const KOMPONENTEN_KATALOG = {
+  schaltwerk:   ['Shimano GRX RD-RX810'],
+  umwerfer:     ['Shimano GRX FD-RX810 (Braze-on)'],
+  kurbel:       ['Shimano GRX FC-RX600-11 46/30'],
+  kassette:     ['Shimano 11-fach 11-34'],
+  kette:        ['Shimano 11-fach'],
+  innenlager:   ['Shimano BB-MT501 (BSA)'],
+  steuersatz:   ['semi-integriert'],
+  bremsbelag:   ['Shimano, für BR-RX400'],
+  bremsscheibe: ['Center Lock 160 mm', 'Center Lock 180 mm'],
+  mantel:       ['Schwalbe G-One Speed (Faltreifen)'],
+  lenkerband:   ['Ergotec'],
+  // Schlaeuche nach ETRTO: <min>/<max>-<Felgendurchmesser>.
+  // 622 = 28"/700c, passend zur Felge Mach1 622x19c.
   schlauch: [
-    '18/25-622', '18/28-622', '25/32-622', '28/47-622', '32/47-622', '40/62-622',
-    '40/60-584', '47/62-584',
-    '37/47-559', '47/62-559'
-  ],
-  mantel: [
-    'Schwalbe G-One Speed 40-622', 'Schwalbe G-One Allround 40-622',
-    'Schwalbe G-One Bite 45-622', 'Schwalbe G-One R 45-622',
-    'Continental Terra Trail 40-622', 'Continental Terra Speed 40-622',
-    'Continental Grand Prix 5000 32-622',
-    'Panaracer GravelKing SK 43-622', 'WTB Riddler 45-622',
-    'Pirelli Cinturato Gravel M 40-622'
-  ],
-  kette: [
-    'Shimano CN-HG601-11', 'Shimano CN-M7100 (12-fach)', 'Shimano CN-HG701-11',
-    'SRAM PC-1130', 'KMC X11', 'KMC X12'
-  ],
-  kassette: [
-    'Shimano CS-HG700-11 11-34', 'Shimano CS-M7100-12 10-51',
-    'Shimano CS-HG800-11 11-34', 'SRAM PG-1130 11-42'
-  ],
-  kurbel: [
-    'Shimano GRX FC-RX600-11 46/30', 'Shimano GRX FC-RX810-2 48/31',
-    'Shimano GRX FC-RX810-1 40T', 'Shimano FC-RS510 50/34'
-  ],
-  schaltwerk: [
-    'Shimano GRX RD-RX810', 'Shimano GRX RD-RX812', 'Shimano GRX RD-RX400',
-    'Shimano RD-R7000'
-  ],
-  umwerfer: [
-    'Shimano GRX FD-RX810 (Braze-on)', 'Shimano GRX FD-RX400', 'Shimano FD-R7000'
-  ],
-  innenlager: [
-    'Shimano BB-MT501 (BSA)', 'Shimano BB-RS500 (BSA)', 'Shimano BB-MT800 (BSA)',
-    'SRAM DUB (BSA)'
-  ],
-  steuersatz: [
-    'semi-integriert ZS44/ZS56', 'integriert IS42/IS52', 'semi-integriert ZS44/ZS44',
-    'Aussenliegend EC34/EC34'
-  ],
-  bremsbelag: [
-    'Shimano L03A Resin', 'Shimano L04C Metall', 'Shimano K02S Resin', 'SwissStop Disc 34 RS'
-  ],
-  bremsscheibe: [
-    'Shimano SM-RT70 160mm', 'Shimano SM-RT70 180mm',
-    'Shimano SM-RT800 160mm', 'Shimano RT-CL800 160mm'
-  ],
-  lenkerband: [
-    'Lizard Skins DSP 2.5', 'Fizik Tempo Microtex Bondcush', 'Supacaz Super Sticky Kush'
+    '18/25-622', '18/28-622', '25/32-622', '28/47-622', '32/47-622', '40/62-622'
   ]
 };
 

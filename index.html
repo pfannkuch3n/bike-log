@@ -1224,7 +1224,7 @@ const DB_NAME        = 'bike-log';
 const DB_VERSION     = 2;
 const STORE          = 'data';
 const DATA_KEY       = 'main';
-const APP_VERSION    = '2.5.0';
+const APP_VERSION    = '2.5.1';
 const SCHEMA_VERSION = 6;
 const BACKUP_DAYS    = 7;
 
@@ -2162,6 +2162,18 @@ function renderVtMaengel(vt) {
  */
 function renderBezeichnungAuswahl(typ, aktuelleBezeichnung = '') {
   const select = document.getElementById('vt-bezeichnung-select');
+
+  // Ohne Typ gaebe es nichts zu filtern – das Feld saehe faelschlich leer aus,
+  // als muesste man die Komponente selbst eintippen.
+  if (!typ) {
+    select.innerHTML = '<option value="">– zuerst Typ wählen –</option>';
+    select.disabled = true;
+    document.getElementById('vt-bezeichnung').value = '';
+    zeigeNeueKomponenteFelder(false);
+    return;
+  }
+  select.disabled = false;
+
   const eintraege = katalogFuerTyp(typ);
   const treffer = eintraege.find(e => katalogLabel(e) === aktuelleBezeichnung);
 

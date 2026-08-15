@@ -819,8 +819,16 @@ textarea { resize: vertical; min-height: 80px; }
         </div>
         <div class="field">
           <label for="vt-bezeichnung">Bezeichnung</label>
-          <input id="vt-bezeichnung" type="text" list="vt-bezeichnung-liste" placeholder="z.B. Schwalbe G-One R 45-622" autocomplete="off" />
-          <datalist id="vt-bezeichnung-liste"></datalist>
+          <select id="vt-bezeichnung-select">
+            <option value="">– keine –</option>
+          </select>
+          <input type="hidden" id="vt-bezeichnung" />
+          <div id="vt-neu-box" hidden style="margin-top:10px">
+            <input id="vt-neu-marke" type="text" placeholder="Marke, z.B. Shimano" autocomplete="off" />
+            <input id="vt-neu-modell" type="text" placeholder="Modell, z.B. GRX RD-RX810" autocomplete="off" style="margin-top:8px" />
+            <input id="vt-neu-groesse" type="text" placeholder="Größe / Spezifikation (optional)" autocomplete="off" style="margin-top:8px" />
+            <button type="button" class="btn btn-secondary" id="vt-neu-uebernehmen" style="margin-top:8px">Komponente hinzufügen</button>
+          </div>
         </div>
         <div class="field">
           <label for="vt-eingebautAm">Eingebaut am *</label>
@@ -1158,8 +1166,8 @@ const DB_NAME        = 'bike-log';
 const DB_VERSION     = 2;
 const STORE          = 'data';
 const DATA_KEY       = 'main';
-const APP_VERSION    = '2.2.0';
-const SCHEMA_VERSION = 4;
+const APP_VERSION    = '2.3.0';
+const SCHEMA_VERSION = 5;
 const BACKUP_DAYS    = 7;
 
 // ── Verschleissteil Defaults ──────────────────────────────────
@@ -1213,62 +1221,33 @@ const SCHWERE_LABEL = { leicht: 'Leicht', schwer: 'Schwer' };
 const KATEGORIE_LABEL = { sicherheit: 'Sicherheit', funktion: 'Funktion', optik: 'Optik', sonstiges: 'Sonstiges' };
 
 // ── Komponenten-Katalog ────────────────────────────────────────
-// Vorschlagslisten je Typ für eine einheitliche Bezeichnung. Die Felder bleiben
-// Freitext – der Katalog schlägt nur vor. Eigene Bezeichnungen werden zur
-// Laufzeit ergänzt (siehe renderBezeichnungVorschlaege).
-// Schläuche folgen der ETRTO-Norm: <min>/<max>-<Felgendurchmesser>.
-const KOMPONENTEN_KATALOG = {
-  schlauch: [
-    '18/25-622', '18/28-622', '25/32-622', '28/47-622', '32/47-622', '40/62-622',
-    '40/60-584', '47/62-584',
-    '37/47-559', '47/62-559'
-  ],
-  mantel: [
-    'Schwalbe G-One Speed 40-622', 'Schwalbe G-One Allround 40-622',
-    'Schwalbe G-One Bite 45-622', 'Schwalbe G-One R 45-622',
-    'Continental Terra Trail 40-622', 'Continental Terra Speed 40-622',
-    'Continental Grand Prix 5000 32-622',
-    'Panaracer GravelKing SK 43-622', 'WTB Riddler 45-622',
-    'Pirelli Cinturato Gravel M 40-622'
-  ],
-  kette: [
-    'Shimano CN-HG601-11', 'Shimano CN-M7100 (12-fach)', 'Shimano CN-HG701-11',
-    'SRAM PC-1130', 'KMC X11', 'KMC X12'
-  ],
-  kassette: [
-    'Shimano CS-HG700-11 11-34', 'Shimano CS-M7100-12 10-51',
-    'Shimano CS-HG800-11 11-34', 'SRAM PG-1130 11-42'
-  ],
-  kurbel: [
-    'Shimano GRX FC-RX600-11 46/30', 'Shimano GRX FC-RX810-2 48/31',
-    'Shimano GRX FC-RX810-1 40T', 'Shimano FC-RS510 50/34'
-  ],
-  schaltwerk: [
-    'Shimano GRX RD-RX810', 'Shimano GRX RD-RX812', 'Shimano GRX RD-RX400',
-    'Shimano RD-R7000'
-  ],
-  umwerfer: [
-    'Shimano GRX FD-RX810 (Braze-on)', 'Shimano GRX FD-RX400', 'Shimano FD-R7000'
-  ],
-  innenlager: [
-    'Shimano BB-MT501 (BSA)', 'Shimano BB-RS500 (BSA)', 'Shimano BB-MT800 (BSA)',
-    'SRAM DUB (BSA)'
-  ],
-  steuersatz: [
-    'semi-integriert ZS44/ZS56', 'integriert IS42/IS52', 'semi-integriert ZS44/ZS44',
-    'Aussenliegend EC34/EC34'
-  ],
-  bremsbelag: [
-    'Shimano L03A Resin', 'Shimano L04C Metall', 'Shimano K02S Resin', 'SwissStop Disc 34 RS'
-  ],
-  bremsscheibe: [
-    'Shimano SM-RT70 160mm', 'Shimano SM-RT70 180mm',
-    'Shimano SM-RT800 160mm', 'Shimano RT-CL800 160mm'
-  ],
-  lenkerband: [
-    'Lizard Skins DSP 2.5', 'Fizik Tempo Microtex Bondcush', 'Supacaz Super Sticky Kush'
-  ]
-};
+// Der Katalog liegt im State (state.katalog), damit eigene Komponenten
+// dauerhaft auswaehlbar bleiben. Ein Eintrag ist ein Objekt, kein String:
+//   { id, typ, marke, modell, groesse }
+// Diese Defaults sind die tatsaechlich am Gravel Lite verbauten Teile und
+// werden beim ersten Start bzw. bei der Migration einmalig angelegt.
+const KATALOG_DEFAULTS = [
+  { typ: 'schaltwerk',   marke: 'Shimano', modell: 'GRX RD-RX810',    groesse: '' },
+  { typ: 'umwerfer',     marke: 'Shimano', modell: 'GRX FD-RX810',    groesse: 'Braze-on' },
+  { typ: 'kurbel',       marke: 'Shimano', modell: 'GRX FC-RX600-11', groesse: '46/30' },
+  { typ: 'kassette',     marke: 'Shimano', modell: '11-fach',         groesse: '11-34' },
+  { typ: 'kette',        marke: 'Shimano', modell: '11-fach',         groesse: '' },
+  { typ: 'innenlager',   marke: 'Shimano', modell: 'BB-MT501',        groesse: 'BSA' },
+  { typ: 'steuersatz',   marke: '',        modell: 'semi-integriert', groesse: '' },
+  { typ: 'bremsbelag',   marke: 'Shimano', modell: 'für BR-RX400',    groesse: '' },
+  { typ: 'bremsscheibe', marke: 'Shimano', modell: 'Center Lock',     groesse: '160 mm' },
+  { typ: 'bremsscheibe', marke: 'Shimano', modell: 'Center Lock',     groesse: '180 mm' },
+  { typ: 'mantel',       marke: 'Schwalbe', modell: 'G-One Speed',    groesse: 'Faltreifen' },
+  { typ: 'lenkerband',   marke: 'Ergotec', modell: '',                groesse: '' },
+  // Schlaeuche nach ETRTO: <min>/<max>-<Felgendurchmesser>.
+  // 622 = 28"/700c, passend zur Felge Mach1 622x19c.
+  { typ: 'schlauch', marke: '', modell: '', groesse: '18/25-622' },
+  { typ: 'schlauch', marke: '', modell: '', groesse: '18/28-622' },
+  { typ: 'schlauch', marke: '', modell: '', groesse: '25/32-622' },
+  { typ: 'schlauch', marke: '', modell: '', groesse: '28/47-622' },
+  { typ: 'schlauch', marke: '', modell: '', groesse: '32/47-622' },
+  { typ: 'schlauch', marke: '', modell: '', groesse: '40/62-622' }
+];
 
 // Vorbelegung der Ausstattung je Modell. Wird nur ins Formular geschrieben –
 // gespeichert wird erst, wenn du auf Speichern tippst.
@@ -1357,11 +1336,20 @@ function migrateV3toV4(oldState) {
   return newState;
 }
 
+// ── Migration v4 → v5 ────────────────────────────────────────
+// Legt den Komponenten-Katalog an (Feature: Komponenten als Objekte)
+function migrateV4toV5(oldState) {
+  const newState = { ...oldState, schemaVersion: 5 };
+  newState.katalog = oldState.katalog || createKatalogDefaults();
+  return newState;
+}
+
 function migrateState(oldState) {
   let state = oldState;
   if (state.schemaVersion < 2) state = migrateV1toV2(state);
   if (state.schemaVersion < 3) state = migrateV2toV3(state);
   if (state.schemaVersion < 4) state = migrateV3toV4(state);
+  if (state.schemaVersion < 5) state = migrateV4toV5(state);
 
   if (state !== oldState) {
     state.meta = { ...oldState.meta, appVersion: APP_VERSION };
@@ -1421,6 +1409,7 @@ function emptyState() {
     fahrten: [],
     verschleissteile: [],
     maengel: [],
+    katalog: createKatalogDefaults(),
     meta: { letzterExport: null, appVersion: APP_VERSION },
   };
 }
@@ -1581,6 +1570,47 @@ function sortedVerschleissteile() {
     // Dann nach Typ
     return a.typ.localeCompare(b.typ);
   });
+}
+
+// ── Katalog Helfer ─────────────────────────────────────────────
+
+// Sonderwerte des Dropdowns, abgegrenzt von echten Katalog-IDs (UUIDs)
+const BEZ_NEU = '__neue_komponente__';
+const BEZ_UEBERNOMMEN = '__uebernommen__';
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function createKatalogDefaults() {
+  return KATALOG_DEFAULTS.map(e => ({ id: crypto.randomUUID(), ...e }));
+}
+
+/** Baut aus Marke/Modell/Größe die Anzeige-Bezeichnung */
+function katalogLabel(eintrag) {
+  return [eintrag.marke, eintrag.modell, eintrag.groesse]
+    .map(s => (s || '').trim())
+    .filter(Boolean)
+    .join(' ');
+}
+
+function katalogFuerTyp(typ) {
+  return state.katalog
+    .filter(e => e.typ === typ)
+    .sort((a, b) => katalogLabel(a).localeCompare(katalogLabel(b), 'de'));
+}
+
+function addKatalogEintrag({ typ, marke, modell, groesse }) {
+  const eintrag = {
+    id: crypto.randomUUID(),
+    typ,
+    marke: (marke || '').trim(),
+    modell: (modell || '').trim(),
+    groesse: (groesse || '').trim()
+  };
+  state.katalog.push(eintrag);
+  return eintrag;
 }
 
 // ── Mängel Helfer ──────────────────────────────────────────────
@@ -1960,7 +1990,6 @@ function openVerschleissteilForm(vt = null) {
   document.getElementById('vt-id').value = vt?.id || '';
   document.getElementById('vt-typ').value = vt?.typ || '';
   document.getElementById('vt-position').value = vt?.position || '';
-  document.getElementById('vt-bezeichnung').value = vt?.bezeichnung || '';
   document.getElementById('vt-eingebautAm').value = vt?.eingebautAm || today();
   document.getElementById('vt-erwarteteKm').value = vt?.erwarteteKm !== null && vt?.erwarteteKm !== undefined ? vt.erwarteteKm : '';
   document.getElementById('vt-notiz').value = vt?.notiz || '';
@@ -1972,7 +2001,7 @@ function openVerschleissteilForm(vt = null) {
 
   renderSchlauchInfo(vt);
   renderVtMaengel(vt);
-  renderBezeichnungVorschlaege(vt?.typ || '');
+  renderBezeichnungAuswahl(vt?.typ || '', vt?.bezeichnung || '');
 
   showView('view-verschleissteil-form');
 }
@@ -1999,19 +2028,84 @@ function renderVtMaengel(vt) {
     : '<div class="settings-row-sub">Noch keine Mängel gemeldet.</div>';
 }
 
-/** Füllt die Vorschlagsliste für die Bezeichnung: Katalog + bereits selbst verwendete Namen */
-function renderBezeichnungVorschlaege(typ) {
-  const katalog = KOMPONENTEN_KATALOG[typ] || [];
+/**
+ * Füllt das Komponenten-Dropdown für einen Typ.
+ * aktuelleBezeichnung wird vorausgewählt; steht sie nicht im Katalog
+ * (z.B. aus einer aelteren Version), bleibt sie als eigener Eintrag erhalten.
+ */
+function renderBezeichnungAuswahl(typ, aktuelleBezeichnung = '') {
+  const select = document.getElementById('vt-bezeichnung-select');
+  const eintraege = katalogFuerTyp(typ);
+  const treffer = eintraege.find(e => katalogLabel(e) === aktuelleBezeichnung);
 
-  // Eigene Bezeichnungen desselben Typs ergänzen, damit Schreibweisen konsistent bleiben
-  const eigene = state.verschleissteile
-    .filter(v => v.typ === typ && v.bezeichnung)
-    .map(v => v.bezeichnung);
+  let html = '<option value="">– keine –</option>';
+  html += eintraege.map(e => `<option value="${e.id}">${escapeHtml(katalogLabel(e))}</option>`).join('');
+  if (aktuelleBezeichnung && !treffer) {
+    html += `<option value="${BEZ_UEBERNOMMEN}">${escapeHtml(aktuelleBezeichnung)}</option>`;
+  }
+  html += `<option value="${BEZ_NEU}">+ Neue Komponente …</option>`;
+  select.innerHTML = html;
 
-  const alle = [...new Set([...katalog, ...eigene])].sort((a, b) => a.localeCompare(b, 'de'));
+  select.value = treffer ? treffer.id : (aktuelleBezeichnung ? BEZ_UEBERNOMMEN : '');
+  document.getElementById('vt-bezeichnung').value = aktuelleBezeichnung || '';
+  zeigeNeueKomponenteFelder(false);
+}
 
-  document.getElementById('vt-bezeichnung-liste').innerHTML =
-    alle.map(b => `<option value="${b.replace(/"/g, '&quot;')}"></option>`).join('');
+/** Blendet die Eingabefelder für eine neue Komponente ein/aus */
+function zeigeNeueKomponenteFelder(sichtbar) {
+  document.getElementById('vt-neu-box').hidden = !sichtbar;
+  if (!sichtbar) return;
+  ['vt-neu-marke', 'vt-neu-modell', 'vt-neu-groesse'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  setTimeout(() => document.getElementById('vt-neu-marke').focus(), 50);
+}
+
+/** Legt die im Formular eingegebene Komponente im Katalog an und wählt sie aus */
+async function neueKomponenteUebernehmen() {
+  const typ = document.getElementById('vt-typ').value;
+  if (!typ) {
+    showToast('Bitte zuerst einen Typ wählen.', 'error');
+    return;
+  }
+
+  const eintrag = {
+    typ,
+    marke: document.getElementById('vt-neu-marke').value.trim(),
+    modell: document.getElementById('vt-neu-modell').value.trim(),
+    groesse: document.getElementById('vt-neu-groesse').value.trim()
+  };
+
+  if (!katalogLabel(eintrag)) {
+    showToast('Bitte mindestens Marke, Modell oder Größe angeben.', 'error');
+    return;
+  }
+
+  const vorhanden = katalogFuerTyp(typ).find(e => katalogLabel(e) === katalogLabel(eintrag));
+  if (vorhanden) {
+    renderBezeichnungAuswahl(typ, katalogLabel(vorhanden));
+    showToast('Komponente gibt es bereits – ausgewählt.');
+    return;
+  }
+
+  const neu = addKatalogEintrag(eintrag);
+
+  try {
+    await dbSave(state);
+    renderBezeichnungAuswahl(typ, katalogLabel(neu));
+    showToast('Komponente hinzugefügt.');
+  } catch (err) {
+    showToast('Fehler beim Speichern: ' + err.message, 'error');
+  }
+}
+
+/** Liest die Bezeichnung aus dem Formular – aus dem Katalog oder als übernommener Wert */
+function getBezeichnungAusFormular() {
+  const wert = document.getElementById('vt-bezeichnung-select').value;
+  if (!wert || wert === BEZ_NEU) return '';
+  if (wert === BEZ_UEBERNOMMEN) return document.getElementById('vt-bezeichnung').value.trim();
+  const eintrag = state.katalog.find(e => e.id === wert);
+  return eintrag ? katalogLabel(eintrag) : '';
 }
 
 /** Zeigt bei Schläuchen die Mantel-Verknüpfung und Loch-Historie an */
@@ -2043,7 +2137,7 @@ function getFormVerschleissteil() {
     id: document.getElementById('vt-id').value,
     typ: document.getElementById('vt-typ').value,
     position: document.getElementById('vt-position').value || null,
-    bezeichnung: document.getElementById('vt-bezeichnung').value.trim(),
+    bezeichnung: getBezeichnungAusFormular(),
     eingebautAm: document.getElementById('vt-eingebautAm').value,
     erwarteteKm: document.getElementById('vt-erwarteteKm').value 
       ? parseInt(document.getElementById('vt-erwarteteKm').value, 10) 
@@ -2743,8 +2837,15 @@ function bindEvents() {
     const id = document.getElementById('vt-id').value;
     const existing = id ? state.verschleissteile.find(v => v.id === id) : null;
     renderSchlauchInfo(existing && existing.typ === e.target.value ? existing : null);
-    renderBezeichnungVorschlaege(e.target.value);
+    // Typwechsel setzt die Komponentenauswahl zurueck – ein Mantel passt nicht zu einer Kette
+    renderBezeichnungAuswahl(e.target.value, existing && existing.typ === e.target.value ? existing.bezeichnung : '');
   });
+
+  // Komponenten-Dropdown: "+ Neue Komponente" blendet die Eingabefelder ein
+  document.getElementById('vt-bezeichnung-select').addEventListener('change', (e) => {
+    zeigeNeueKomponenteFelder(e.target.value === BEZ_NEU);
+  });
+  document.getElementById('vt-neu-uebernehmen').addEventListener('click', neueKomponenteUebernehmen);
 
   // Bike-Schema-View
   document.getElementById('btn-bike-schema').addEventListener('click', () => { _schemaOrigin = 'view-bike'; renderBikeSchema(); showView('view-bike-schema'); });

@@ -804,6 +804,7 @@ textarea { resize: vertical; min-height: 80px; }
             <option value="kassette">Kassette</option>
             <option value="kurbel">Kurbel</option>
             <option value="kettenblatt">Kettenblatt</option>
+            <option value="schalthebel">Schalthebel</option>
             <option value="schaltwerk">Schaltwerk</option>
             <option value="umwerfer">Umwerfer</option>
             <option value="innenlager">Innenlager</option>
@@ -1224,8 +1225,8 @@ const DB_NAME        = 'bike-log';
 const DB_VERSION     = 2;
 const STORE          = 'data';
 const DATA_KEY       = 'main';
-const APP_VERSION    = '2.5.1';
-const SCHEMA_VERSION = 6;
+const APP_VERSION    = '2.6.0';
+const SCHEMA_VERSION = 7;
 const BACKUP_DAYS    = 7;
 
 // ── Verschleissteil Defaults ──────────────────────────────────
@@ -1242,7 +1243,7 @@ const DEFAULT_ERWARTETE_KM = {
 };
 
 // ── Verschleissteil Typen & Positionen ────────────────────────
-const VALID_TYPEN = ['mantel', 'schlauch', 'kette', 'kassette', 'kurbel', 'kettenblatt', 'schaltwerk', 'umwerfer', 'innenlager', 'steuersatz', 'bremsbelag', 'bremsscheibe', 'zug', 'lenkerband', 'sonstiges'];
+const VALID_TYPEN = ['mantel', 'schlauch', 'kette', 'kassette', 'kurbel', 'kettenblatt', 'schalthebel', 'schaltwerk', 'umwerfer', 'innenlager', 'steuersatz', 'bremsbelag', 'bremsscheibe', 'zug', 'lenkerband', 'sonstiges'];
 const VALID_POSITIONEN = ['vorne', 'hinten', null];
 
 // ── SVG-Schema: Mapping Hotspot → Verschleissteil(e) ──────────
@@ -1268,7 +1269,7 @@ const SVG_KOMPONENTEN = [
 
 const TYP_LABEL = {
   mantel: 'Mantel', schlauch: 'Schlauch', kette: 'Kette', kassette: 'Kassette', kurbel: 'Kurbel',
-  kettenblatt: 'Kettenblatt', schaltwerk: 'Schaltwerk', umwerfer: 'Umwerfer',
+  kettenblatt: 'Kettenblatt', schalthebel: 'Schalthebel', schaltwerk: 'Schaltwerk', umwerfer: 'Umwerfer',
   innenlager: 'Innenlager', steuersatz: 'Steuersatz', bremsbelag: 'Bremsbelag',
   bremsscheibe: 'Bremsscheibe', zug: 'Zug', lenkerband: 'Lenkerband', sonstiges: 'Sonstiges'
 };
@@ -1285,6 +1286,7 @@ const KATEGORIE_LABEL = { sicherheit: 'Sicherheit', funktion: 'Funktion', optik:
 // Diese Defaults sind die tatsaechlich am Gravel Lite verbauten Teile und
 // werden beim ersten Start bzw. bei der Migration einmalig angelegt.
 const KATALOG_DEFAULTS = [
+  { typ: 'schalthebel',  marke: 'Shimano', modell: 'GRX ST-RX810',    groesse: '' },
   { typ: 'schaltwerk',   marke: 'Shimano', modell: 'GRX RD-RX810',    groesse: '' },
   { typ: 'umwerfer',     marke: 'Shimano', modell: 'GRX FD-RX810',    groesse: 'Braze-on' },
   { typ: 'kurbel',       marke: 'Shimano', modell: 'GRX FC-RX600-11', groesse: '46/30' },
@@ -1415,6 +1417,20 @@ function migrateV5toV6(oldState) {
   return newState;
 }
 
+// ── Migration v6 → v7 ────────────────────────────────────────
+// Schalthebel als Typ nachgereicht. Der Katalog liegt im State, deshalb
+// erreicht ein neuer Default bestehende Installationen nicht von selbst.
+function migrateV6toV7(oldState) {
+  const newState = { ...oldState, schemaVersion: 7 };
+  const katalog = oldState.katalog || [];
+  const fehlt = !katalog.some(e => e.typ === 'schalthebel');
+  newState.katalog = fehlt
+    ? [...katalog, ...KATALOG_DEFAULTS.filter(e => e.typ === 'schalthebel')
+        .map(e => ({ id: crypto.randomUUID(), ...e }))]
+    : katalog;
+  return newState;
+}
+
 function migrateState(oldState) {
   let state = oldState;
   if (state.schemaVersion < 2) state = migrateV1toV2(state);
@@ -1422,6 +1438,7 @@ function migrateState(oldState) {
   if (state.schemaVersion < 4) state = migrateV3toV4(state);
   if (state.schemaVersion < 5) state = migrateV4toV5(state);
   if (state.schemaVersion < 6) state = migrateV5toV6(state);
+  if (state.schemaVersion < 7) state = migrateV6toV7(state);
 
   if (state !== oldState) {
     state.meta = { ...oldState.meta, appVersion: APP_VERSION };
